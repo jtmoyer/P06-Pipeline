@@ -7,16 +7,16 @@
 
 clearvars -except session; 
 close all; 
-addpath('C:\Users\jtmoyer\Documents\MATLAB\');
+addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\P06-Pipeline\'));
 addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1]; % index of animals in data key
+runThese = [1,3:5,7:12,14:34]; % index of animals in data key
 
-origLayerName = 'training-data'; % name of existing layer, move annots from here
-newLayerName = 'start-stop'; % name of new layer, move annots to here
-textPattern = 'EEG'; % text common to all annotations you want moved
+origLayerName = 'seizure-linelength-start-stop'; % name of existing layer, move annots from here
+newLayerName = 'seizure-linelength'; % name of new layer, move annots to here
+textPattern = 'seizure'; % text common to all annotations you want moved
 
 switchAnnotations = 0; % flag to prevent script from running accidentally
 
@@ -63,7 +63,7 @@ end
 
 %% Feature detection and annotation upload 
 if switchAnnotations
-  a = 'y'; % input(sprintf('Do you really want to move ''%s'' annotations from %s to %s? (y/n): ', textPattern, origLayerName, newLayerName), 's');
+  a = input(sprintf('Do you really want to move ''%s'' annotations from %s to %s? (y/n): ', textPattern, origLayerName, newLayerName), 's');
   if strcmpi(a, 'y')
     for r = 1:length(runThese)
       try
@@ -71,8 +71,9 @@ if switchAnnotations
         labels = {allEvents.description}';
         matches = cellfun(@regexpi, labels, cellstr(repmat(textPattern, length(labels),1)),'UniformOutput',false);
         idx = ~cellfun(@isempty, matches);  % 1 in idx will be moved to new layer
-     catch
+      catch err
         idx = [];
+        rethrow(err);
         fprintf('%s: %s not found.\n', session.data(r).snapName, origLayerName);
       end
 %       labels = {allEvents.description}';

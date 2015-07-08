@@ -7,6 +7,10 @@ function [channels, clips, timesUsec, labels] = f_loadDataClips(dataset, params,
 %   dbstop in f_loadDataClips at 18
     
   % download data from portal or load from file
+  channels = [];
+  clips = [];
+  timesUsec = [];
+  labels = [];
   params.startUsecs = 0;
   fs = dataset.sampleRate;
   clipsFile =  fullfile(runDir, sprintf('/Output/%s-clips-%s-%s.mat',dataset.snapName,params.label,params.technique));

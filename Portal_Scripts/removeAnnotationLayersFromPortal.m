@@ -6,10 +6,10 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1]; 
+runThese = [1:34]; 
 
 removeAnnotations = 0;
-layerName = 'seizure-linelength-grooming-artifact';
+layerName = 'seizure-linelength-start-stop-grooming-artifacts';
 
 %% Load investigator data key
 switch study

@@ -9,19 +9,22 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\libsvm-3.18'));
 addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
-study = 'chahine';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1:3]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
-params.channels = 2:7;
-params.label = 'sleep';
-params.technique = 'powerbands';
+study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
+runThese = [1:5,7:12,14:34]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
+params.channels = 1:4;
+params.label = 'seizure';
+params.technique = 'linelength';
 params.startTime = '1:00:00:00';  % day:hour:minute:second, in portal time
 params.endTime = '0:00:00:00'; % day:hour:minute:second, in portal time
 params.lookAtArtifacts = 0; % lookAtArtifacts = 1 means keep artifacts to see what's being removed
+layerName = sprintf('%s-%s', params.label, params.technique);
+numDetections = 200;
 
-eventDetection = 1;
+eventDetection = 0;
 unsupervisedClustering = 0;
 addAnnotations = 0;  
-scoreDetections = 0;
+scoreDetections = 1;
+calculatePerformance = 0;
 boxPlot = 0;
 
 %% Load investigator data key
@@ -82,26 +85,47 @@ end
 %% LEO - ignore everything below this
 %.....................................
 %.....................................
+if ~exist('allData', 'var')
+  try
+    load('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat');
+  catch
+    allData = struct('index', dataKey.portalId, 'channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
+    for r = 1:length(runThese)
+      [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
+  %     allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
+    end
+    save('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat', 'allData');
+  end
+end
 
 %% clustering
 if unsupervisedClustering
-  if ~exist('allData', 'var') 
-    allData = struct('channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
-    for r = 1:length(runThese)
-      [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
-      allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
-      clips = [];
-    end
-  end
+%   if ~exist('allData', 'var') 
+%     allData = struct('index', 'channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
+%     for r = 1:length(runThese)
+%       [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
+%       allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
+%       clips = [];
+%       save('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat', allData);
+%     end
+%   end
   
   useData = allData; 
+  useTheseFeatures = [1]; % which feature functions to use for clustering?
+  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
+  useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
+  useTheseFeatures = [2]; % which feature functions to use for clustering?
+  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
+  useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
   useTheseFeatures = [3]; % which feature functions to use for clustering?
-  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir);
-  useData = f_removeAnnotations(session, params, useData, featFn, useTheseFeatures);
+  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 4.5);
+  useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 1);
 
-  layerName = sprintf('%s-%s-%s', params.label, params.technique, 'minus-grooming-thr1atatime');
+  layerName = sprintf('%s-%s-%s', params.label, params.technique, 'output');
   for r = 1:length(runThese)
-    if addAnnotations f_uploadAnnotations(session.data(r), layerName, useData(r).timesUsec, useData(r).channels, 'Event'); end;
+    if addAnnotations 
+      f_uploadAnnotations(session.data(r), layerName, useData(r).timesUsec, useData(r).channels, cellstr(repmat('Event',length(useData(r).timesUsec),1))); 
+    end;
   end
 end
 
@@ -111,44 +135,46 @@ if scoreDetections
 %   f_boxPlot(session, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
   if ~exist('allData', 'var') 
     load('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat');
-%     allData = struct('channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
-%     for r = 1:length(runThese)
-%       [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
-%     end
   end
-  
   
   % make vector indicating number of detections in each dataset
   % based on probability, randomly divide the desired number of detections between datasets
   % then run through each dataset and present the detections to be scored
-  layerName = sprintf('%s-%s', params.label, params.technique);
-  numDetections = 20;
-%   rando = RandStream('mt19937ar', 'Seed', 1);
-  rng(1)
-  for i = 1: size(allData,1)
-    allLengths(i,1) = length(allData(i).channels);
+  rng(1);  % seed random number generator
+  for r = 1: length(allData)
+    allLengths(r,1) = length(allData(r).channels);
   end
+%     sampleThese{r,:} = randperm(allLengths(r));
   sampleThese = sort(randsample(length(allLengths), numDetections, true, allLengths));
   numSamples = hist(sampleThese, 1:length(allLengths))';
+  these = cell(length(allData),1);
+  
+  for r = 1: length(allData)
+    if numSamples(r) > 0
+      these{r} = sort(randi(allLengths(r), [numSamples(r), 1]));
+%       close all force;
+%       f_scoreDetections(session.data(r), layerName, allData(runThese(r)).timesUsec(these,:), [1:4], 'testing', dataKey(runThese(r),:));
+%       keyboard;
+    end
+  end
 
-  for r = 1: size(allData,1)
-    these = randi(allLengths(r), [numSamples(r), 1]);
-    if these > 0
+  for r = 1: length(runThese)
+    if ~isempty(these{runThese(r)})
       close all force;
-      f_scoreDetections(session.data(r), layerName, allData(r).timesUsec(these,:), 1:4, 'testing');
+      f_scoreDetections(session.data(r), layerName, allData(runThese(r)).timesUsec(these{r},:), [1:4], 'testing', dataKey(runThese(r),:));
       keyboard;
     end
   end
-  
-%   f_scoreDetections();
-%   f_calculatePerformance();
 end
 
+if calculatePerformance
+  scores = f_calculatePerformance(session, runThese, 'seizure-linelength-output', 'testing')
+end
 
 %% Analyze results
 if boxPlot
-%   f_boxPlot(session, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
-  f_boxPlotPerDay(session, runDir, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');  
+  f_boxPlot(session, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
+%   f_boxPlotPerDay(session, runDir, runThese, dataKey, 'seizure-linelength-output'); % 'SVMSeizure-2');  
   fprintf('Box plot: %s-%s\n', params.label, params.technique);
   toc
 end

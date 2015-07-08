@@ -1,10 +1,10 @@
-function allData = f_unsupervisedClustering(session, allData, funcInds, runThese, params, runDir)
+function allData = f_unsupervisedClustering(session, allData, funcInds, runThese, params, runDir, threshold)
 % Usage: f_feature_energy(dataset, params)
 % Input: 
 %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
 %   'params'    -   Structure containing parameters for the analysis
 % 
-%    dbstop in f_unsupervisedClustering at 46
+%    dbstop in f_unsupervisedClustering at 22
 
   %.....
   % code that sets a threshold and removes detections above it
@@ -18,20 +18,28 @@ function allData = f_unsupervisedClustering(session, allData, funcInds, runThese
     try
 
       % %  code for thresholding
+%     binWidth = (max(featurePts)-min(featurePts)) / 20;
     binWidth = 1;
     bins = floor(min(featurePts)):binWidth:ceil(max(featurePts));
     h1 = hist(featurePts, bins);
   %   bar(bins, h1);
-    localMinima = [false diff(sign(diff(h1))) > 0 true];
+%     localMinima = [false diff(sign(diff(h1))) > 0 true];
   %   topTwoThirds = (1:nbins) > nbins/3;
-    atLeast = bins > 3;
+%     atLeast = bins > 0.5;
 %     aboveMedian = bins > hist(median(featurePts),bins);
-    thresh = bins(logical(localMinima .* atLeast));
+%     aboveInflection = logical([0 0 0 diff(sign(diff(diff(h1)))) > 0]);
+% inflection point: when second derivative changes from negative to positive
+% ie, diff(sign(second derivative)) > 0
+%     thresh = bins(aboveInflection);
+    thresh = bins(bins > threshold);
     thresh = thresh(1) - binWidth/2;  % set thresh to left edge
     fprintf('%s: threshold = %0.3f\n', session.data(r).snapName, thresh);
   % remove values greater than threshold
   % too look at what's being removed on portal, switch to a <=
-    if params.lookAtArtifacts 
+    catch
+      thresh = max(featurePts) + 1; % don't remmove anything
+    end
+    if params.lookAtArtifacts
       cIdx = (featurePts <= repmat(thresh, length(featurePts), 1));
     else
       cIdx = (featurePts > repmat(thresh, length(featurePts), 1));
@@ -41,11 +49,12 @@ function allData = f_unsupervisedClustering(session, allData, funcInds, runThese
 %       gmFit = gmdistribution.fit(featurePts(featurePts<100),2);
 %       cIdx = logical(cluster(gmFit, featurePts) - 1);
 
-      if params.plot3DScatter 
+    if params.plot3DScatter 
+      try
         h = f_plot3DScatter(featurePts, cIdx, funcInds);
-        print(h, fullfile(runDir, 'output', 'Figures', [session.data(r).snapName '_scatter.png']), '-dpng');
+      catch
       end
-    catch 
+      print(h, fullfile(runDir, 'output', 'Figures', [session.data(r).snapName '_scatter.png']), '-dpng');
     end
   end
   

@@ -1,4 +1,4 @@
-function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePrefix)
+function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePrefix, dataTable)
     % viewAnnots is a function that will allow viewing and validation of
     % annotations with an IEEGDataset. Labeled annotations can be saved
     % (uploaded to the portal)
@@ -36,7 +36,7 @@ function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePre
     % limitations under the License.
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    
-    dbstop in f_scoreDetections at 434;
+%     dbstop in f_scoreDetections at 136;
     
     panelColor = get(0,'DefaultUicontrolBackgroundColor');
     scrSize = (get(0,'ScreenSize')./72)./2.54;
@@ -133,11 +133,11 @@ function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePre
     set(get(a1,'YLabel'),'String','Channel Label','FontSize',12);
 
     if sampleFreq ~= 1
-      plotName = sprintf('Dataset Name: %s\nSampling Rate: %3.2f', ...
-        dataset.snapName, sampleFreq);
+      plotName = sprintf('Dataset Name: %s\tAnimal Name: %s\nSampling Rate: %3.2f', ...
+        dataset.snapName, char(dataTable.animalId), sampleFreq);
     else
-      plotName = sprintf(['Dataset Name: %s\nSampling Rate: '...
-        'Varies per channel'], dataset.snapName);
+      plotName = sprintf(['Dataset Name: %s\tAnimal Name: %s\nSampling Rate: '...
+        'Varies per channel'], dataset.snapName, char(dataTable.animalId));
     end
     
     uicontrol(uihandle,'Style', 'text', 'Units','normalized', 'String', plotName,...
@@ -148,9 +148,9 @@ function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePre
     'Position', [0.05 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
     'FontSize',12,'Tag','y-scale');  
   
-    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Decimation : -]',...
-    'Position', [0.08 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
-    'FontSize',12,'Tag','decimation');  
+%     uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Decimation : -]',...
+%     'Position', [0.08 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
+%     'FontSize',12,'Tag','decimation');  
 
     uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Annotation : -]',...
     'Position', [1.01 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
@@ -160,7 +160,15 @@ function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePre
     'Position', [2.01 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
     'FontSize',12,'Tag','label');
 
-    uicontrol(uihandle,'Style', 'pushbutton', 'Units','centimeters', 'String', 'Center Traces',...
+    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Portal Time : -]',...
+    'Position', [6.01 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
+    'FontSize',12,'Tag','portalTime');
+
+    uicontrol(uihandle,'Style', 'text', 'Units','centimeters', 'String', '[Real Time : -]',...
+    'Position', [10.01 0.95 0.25 0.05], 'Parent', centerPanel,'HorizontalAlignment','left',...
+    'FontSize',10,'Tag','realTime');
+
+  uicontrol(uihandle,'Style', 'pushbutton', 'Units','centimeters', 'String', 'Center Traces',...
     'Position', [0.1 -1.2 2 1], 'Callback',@Center,'Parent',bottomPanel);
     uicontrol(uihandle,'Style', 'pushbutton', 'Units','centimeters','String', 'Gain +',...
     'Position', [2.2 -1.2 2 1], 'Callback',@ZoomOutY,'Parent',bottomPanel);    
@@ -269,6 +277,7 @@ function h = f_scoreDetections(dataset, layerName, annotTimes, channels, savePre
     setup.annotLabel=zeros(1,length(setup.annotations));
     setup.chanLabels = chanLabels;
     setup.savePrefix = savePrefix;
+    setup.startSystem = datenum(dataTable.startSystem, 'dd-mmm-yyyy HH:MM:SS');
     guidata(uihandle, setup);
     h = a1;
 end
@@ -310,11 +319,11 @@ function figResize(src,~)
       A1 = findobj(centerPanel,'Tag','plotWindow');
       updateRaw(A1);
 
-      A2 = findobj(centerPanel,'Tag','decimation');
-      set(A2,'String',sprintf('[Decimation: %i ]',setup.decimation));
+%       A2 = findobj(centerPanel,'Tag','decimation');
+%       set(A2,'String',sprintf('[Decimation: %i ]',setup.decimation));
 
       A4 = findobj(centerPanel,'Tag','annotation');
-set(A4,'String',sprintf('[Annotation: %i / %i]',setup.annIdx,numel(setup.annotations)));
+      set(A4,'String',sprintf('[Annotation: %i / %i]',setup.annIdx,numel(setup.annotations)));
 
       if setup.annotLabel(setup.annIdx)==0
           dispLabel='Unmarked';
@@ -332,6 +341,19 @@ set(A4,'String',sprintf('[Annotation: %i / %i]',setup.annIdx,numel(setup.annotat
 
       A5 = findobj(centerPanel,'Tag','label');
       set(A5,'String',sprintf('[Current Label: %s ]',dispLabel),'BackgroundColor',rgbVal);
+      
+      time(1) = setup.annotations(1).start/1e6 - 5;
+      days = floor(time(1)/60/60/24) + 1;
+      hour = floor( (time(1) - (days-1)*24*60*60) /60/60);
+      minute = floor( (time(1) - (days-1)*24*60*60 - hour*60*60) /60);
+      second = floor( (time(1) - (days-1)*24*60*60 - hour*60*60 - minute*60) );
+
+      A6 = findobj(centerPanel,'Tag','portalTime');
+      set(A6,'String',sprintf('[Portal Time: %02d:%02d:%02d:%02d ]', days, hour, minute, second)); 
+
+      actualTime = datestr( (setup.annotations(setup.annIdx).start/1e6 - 5)/60/60/24 + setup.startSystem, 'mm/dd/yyyy HH:MM:SS');
+      A7 = findobj(centerPanel,'Tag','realTime');
+      set(A7,'String',sprintf('[Real Time: %s ]', actualTime)); 
   end
   
 end
@@ -373,17 +395,22 @@ function cenPanelResize(src,~)
     set(listHandle,'Position',[3 1.5 rpos(3)-3.5 rpos(4)-2.5]);
     plotpos = get(listHandle,'position');
     A2 = findobj(src,'Tag','y-scale');
-    set(A2,'position',[plotpos(1) plotpos(4)+plotpos(2) 5 0.6]); 
+    set(A2,'position',[plotpos(1)-3 plotpos(4)+plotpos(2) 5 0.6]); 
     
-    A3 = findobj(src,'Tag','decimation');
-    set(A3,'position',[plotpos(1)+5 plotpos(4)+plotpos(2) 5 0.6]); 
+%     A3 = findobj(src,'Tag','decimation');
+%     set(A3,'position',[plotpos(1)+2 plotpos(4)+plotpos(2) 5 0.6]); 
     
     A4 = findobj(src,'Tag','annotation');
-    set(A4,'position',[plotpos(1)+10 plotpos(4)+plotpos(2) 5 0.6]); 
+    set(A4,'position',[plotpos(1)+2 plotpos(4)+plotpos(2) 5 0.6]); 
     
     A5 = findobj(src,'Tag','label');
-    set(A5,'position',[plotpos(1)+15 plotpos(4)+plotpos(2) 5 0.6]); 
+    set(A5,'position',[plotpos(1)+6 plotpos(4)+plotpos(2) 5 0.6]); 
     
+    A6 = findobj(src,'Tag','portalTime');
+    set(A6,'position',[plotpos(1)+12 plotpos(4)+plotpos(2) 5 0.6]); 
+
+    A7 = findobj(src,'Tag','realTime');
+    set(A7,'position',[plotpos(1)+18 plotpos(4)+plotpos(2) 5 0.6]); 
 end
 
 %% GLOBAL UPDATE FUNCTIONS
@@ -413,7 +440,7 @@ function updateRaw(src, ~)
         if setup.needZoomX %start and stops already defined, do not reset
             setup.needZoomX = 0;
         else
-            setup.startIdx = setup.annotations(setup.annIdx).start/1e6*setup.sf-pad*setup.sf;
+            setup.startIdx = setup.annotations(setup.annIdx).start/1e6*setup.sf-pad*setup.sf;   % in samples
             if setup.startIdx < 1
                 setup.startIdx = 1;
             end
@@ -431,10 +458,16 @@ function updateRaw(src, ~)
         else
             data = double(data);
         end
-%         time = double((setup.startIdx:setup.stopIdx))./setup.sf;
-        setup.startIdx = setup.startIdx/1e6/60/60/24 + datenum
-        time = double(setup.startIdx ./setup.sf;
+        
+        time = double((setup.startIdx:setup.stopIdx))./setup.sf;  % in seconds from start of mef file
+        days = floor(time(1)/60/60/24) + 1;
+        hour = floor( (time(1) - (days-1)*24*60*60) /60/60);
+        minute = floor( (time(1) - (days-1)*24*60*60 - hour*60*60) /60);
+        second = floor( (time(1) - (days-1)*24*60*60 - hour*60*60 - minute*60) );
 
+        actualTime = datestr( (setup.annotations(setup.annIdx).start/1e6 - 5)/60/60/24 + setup.startSystem, 'mm/dd/yyyy HH:MM:SS');
+        time = time - time(1) + str2num(actualTime(18:19));
+        
         if isempty(setup.center)
             setup.center = nanmean(data);
             setup.compression = max(max(data) - nanmean(data));
@@ -499,8 +532,8 @@ function updateRaw(src, ~)
         A2 =findobj(cp,'Tag','y-scale'); 
         set(A2,'String',yscaleText);
         
-        A3 = findobj(cp,'Tag','decimation');
-        set(A3,'String',sprintf('[Decimation: %i ]',setup.decimation));
+%         A3 = findobj(cp,'Tag','decimation');
+%         set(A3,'String',sprintf('[Decimation: %i ]',setup.decimation));
         
         A4 = findobj(cp,'Tag','annotation');
         set(A4,'String',sprintf('[Annotation: %i / %i]',setup.annIdx,numel(setup.annotations)));
@@ -522,6 +555,12 @@ function updateRaw(src, ~)
         A5 = findobj(cp,'Tag','label');
         set(A5,'String',sprintf('[Current Label: %s ]',dispLabel),'BackgroundColor',rgbVal);
         
+        A6 = findobj(cp,'Tag','portalTime');
+        set(A6,'String',sprintf('[Portal Time: %02d:%02d:%02d:%02d ]',days,hour,minute,second));
+
+        A7 = findobj(cp,'Tag','realTime');
+        set(A7,'String',sprintf('[Real Time: %s ]',actualTime));
+
     end
     
     guidata(src, setup);
@@ -598,7 +637,6 @@ end
 % end
 
 function SaveAnnot(src, ~)
-    
     setup = guidata(src);
     
     numUnmarked=sum(setup.annotLabel(setup.savedIdx+1:end)==0);
@@ -614,31 +652,59 @@ function SaveAnnot(src, ~)
         labels = {'event','artifact'};
 %         labels = {'correct','uncertain','incorrect'};
 
-        %extract annotations
+        % upload annotations
         for i=1:numel(labels)
             layerName = [setup.savePrefix '-' labels{i}];
-            annot=setup.annotations(setup.annotLabel(setup.savedIdx+1:end)==i);
-            objs=[];
-            for p=1:length(annot)
-                objs=[objs IEEGAnnotation.createAnnotations(annot(p).start,annot(p).stop,'Event',layerName,annot(p).channels)];
+            startTimes = [setup.annotations(setup.annotLabel == i).start]';
+            stopTimes = [setup.annotations(setup.annotLabel == i).stop]';
+            eventTimesUSec = [startTimes stopTimes];
+            
+            channels = {setup.annotations(setup.annotLabel == i).channels}';
+            eventChannels = cell(length(channels),1);
+            for j = 1: size(channels, 1)
+              % tmpchan = ismember(setup.chanLabels,{setup.annotations(setup.annIdx).channels.label}')
+              eventChannels{j} = find(ismember(setup.chanLabels,{channels{j}.label}'))';
             end
-            if ~isempty(objs)
-                foundLayer = find(strcmp(layerName,{snapshot.annLayer.name}),1);
-                if ~isempty(foundLayer)
-                    snapshot.annLayer(foundLayer).add(objs);
-                else
-                    layer = snapshot.addAnnLayer(layerName);
-                    layer.add(objs);
-                end
-            end
+            eventLabels = cellstr(repmat(labels{i}, length(channels), 1));
+            f_uploadAnnotations(snapshot, layerName, eventTimesUSec, eventChannels, eventLabels)
         end
-
-       setup.savedIdx=setup.savedIdx+setup.annIdx;
-       msgbox('Label annotations saved to IEEG Portal','Success!');
+%        setup.savedIdx=setup.savedIdx+setup.annIdx;
+%        msgbox('Label annotations saved to IEEG Portal','Success!');
        
     else
         msgbox('Annotations not saved','Retry','warn');
     end
+    
+%     if strcmp(choice,'Save anyway')
+%         snapshot = setup.objHandles;
+%         labels = {'event','artifact'};
+% %         labels = {'correct','uncertain','incorrect'};
+% 
+%         %extract annotations
+%         for i=1:numel(labels)
+%             layerName = [setup.savePrefix '-' labels{i}];
+%             annot=setup.annotations(setup.annotLabel(setup.savedIdx+1:end)==i);
+%             objs=[];
+%             for p=1:length(annot)
+%                 objs=[objs IEEGAnnotation.createAnnotations(annot(p).start,annot(p).stop,'Event',layerName,annot(p).channels)];
+%             end
+%             if ~isempty(objs)
+%                 foundLayer = find(strcmp(layerName,{snapshot.annLayer.name}),1);
+%                 if ~isempty(foundLayer)
+%                     snapshot.annLayer(foundLayer).add(objs);
+%                 else
+%                     layer = snapshot.addAnnLayer(layerName);
+%                     layer.add(objs);
+%                 end
+%             end
+%         end
+% 
+%        setup.savedIdx=setup.savedIdx+setup.annIdx;
+%        msgbox('Label annotations saved to IEEG Portal','Success!');
+%        
+%     else
+%         msgbox('Annotations not saved','Retry','warn');
+%     end
     
     guidata(src, setup);
 end

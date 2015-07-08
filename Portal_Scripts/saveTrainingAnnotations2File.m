@@ -11,8 +11,8 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1:5,7:12,14:34]; % use index value in data key
-layerName = 'seizure-linelength';  % name of the layer to save to disk
+runThese = [7:12,14:34]; % use index value in data key
+layerName = 'seizure-linelength-output';  % name of the layer to save to disk
 outputDir = 'C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Backup_Annots'; % output directory for file
 
 saveAnnotations = 1;  % flag to prevent script from overwriting data accidentally
@@ -81,7 +81,7 @@ if saveAnnotations
         fprintf('Saved %s.\n', clipsFile);
       end
     catch err
-      if isempty(find(strcmp({session.data(r).annLayer(:).name}, 'training-data')))
+      if isempty(find(strcmp({session.data(r).annLayer(:).name}, layerName),1))
         fprintf('Check layer %s exists in dataset %s.\n', layerName, session.data(r).snapName);
       else
         rethrow(err);

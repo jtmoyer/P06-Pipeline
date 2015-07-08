@@ -1,10 +1,11 @@
-function allData = f_removeAnnotations(session, params, allData, featFn, useTheseFeatures)
+function allData = f_removeAnnotations(session, allData, featFn, useTheseFeatures, scrub)
 % Usage: f_feature_energy(dataset, params)
 % Input: 
 %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
 %   'params'    -   Structure containing parameters for the analysis
 % 
-%   dbstop in f_removeAnnotations at 16
+% scrub is a 0 or 1
+%   dbstop in f_removeAnnotations at 9
   
   featFn(useTheseFeatures)
   useData = allData;
@@ -15,9 +16,10 @@ function allData = f_removeAnnotations(session, params, allData, featFn, useThes
 %         if params.lookAtArtifacts
 %           removeIdx = find(allData(r).classes{a,f} == 1);
 %         else
-          removeIdx = find(allData(r).classes{a,f} == 1);
+        removeIdx = find(allData(r).classes{a,f} == 1);
 %         end
-        if length(removeIdx) == length(allData(r).classes{a,f})
+        if length(removeIdx) == length(allData(r).classes{a,f}) || ...
+          (~isempty(removeIdx) && scrub)
           allData(r).channels(a) = [];
           allData(r).timesUsec(a,:) = [];
           allData(r).features(a,:) = [];

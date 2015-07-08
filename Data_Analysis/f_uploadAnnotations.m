@@ -12,7 +12,7 @@ function f_uploadAnnotations(dataset,layerName,eventTimesUSec,eventChannels,labe
 %files(d).name(1:15)
 %   v2 3/15/2015 - Hoameng Ung - added variable channel support
 %   
-
+%   dbstop in f_uploadAnnotations at 26;
   try
     ann = [];
 %     fprintf('Creating annotations...');
@@ -23,7 +23,7 @@ function f_uploadAnnotations(dataset,layerName,eventTimesUSec,eventChannels,labe
     for i = 1:numel(uniqueChannels)
         idx = cellfun(@(x)isequal(x,uniqueChannels{i}),eventChannels);
         tmpChan = uniqueChannels(i);
-        ann = [ann IEEGAnnotation.createAnnotations(eventTimesUSec(idx,1),eventTimesUSec(idx,2),'Event',label,dataset.channels(uniqueChannels{i}))];
+        ann = [ann IEEGAnnotation.createAnnotations(eventTimesUSec(idx,1),eventTimesUSec(idx,2),'Event',label(idx),dataset.channels(uniqueChannels{i}))];
     end
 %     fprintf('done!\n');
     numAnnot = numel(ann);
@@ -43,7 +43,8 @@ function f_uploadAnnotations(dataset,layerName,eventTimesUSec,eventChannels,labe
         startIdx = startIdx+5000;
     end
 %     fprintf('done!\n');
-  catch
-    fprintf('No annotations to upload.\n');
+  catch err
+    fprintf('No annotations uploaded.\n');
+    rethrow(err);
   end
 end
