@@ -10,7 +10,7 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1:5,7:12,14:34]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
+runThese = [1:34]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
 params.channels = 1:4;
 params.label = 'seizure';
 params.technique = 'linelength';
@@ -92,12 +92,18 @@ if ~exist('allData', 'var')
     allData = struct('index', dataKey.portalId, 'channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
     for r = 1:length(runThese)
       [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
-  %     allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
+      allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
     end
     save('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat', 'allData');
   end
 end
 
+% % plot histograms of 1/inter-crossings
+% bins = 0:15:300;
+% for i = 1:4
+%   subplot(2,2,i); bar(bins, allData(2).features{4,4}{i}); xlim ([-10 310]); xlabel('Frequency (Hz)'); ylabel('Frequency Count'); title(sprintf('Channel %d',i));
+% end
+  
 %% clustering
 if unsupervisedClustering
 %   if ~exist('allData', 'var') 
@@ -111,17 +117,18 @@ if unsupervisedClustering
 %   end
   
   useData = allData; 
-  useTheseFeatures = [1]; % which feature functions to use for clustering?
-  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
-  useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
-  useTheseFeatures = [2]; % which feature functions to use for clustering?
-  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
-  useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
-  useTheseFeatures = [3]; % which feature functions to use for clustering?
+
+%   useTheseFeatures = [1]; % which feature functions to use for clustering?
+%   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
+%   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
+%   useTheseFeatures = [2]; % which feature functions to use for clustering?
+%   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
+%   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
+  useTheseFeatures = [4]; % which feature functions to use for clustering?
   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 4.5);
   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 1);
 
-  layerName = sprintf('%s-%s-%s', params.label, params.technique, 'output');
+  layerName = sprintf('%s-%s-%s', params.label, params.technique, 'just3-artifact');
   for r = 1:length(runThese)
     if addAnnotations 
       f_uploadAnnotations(session.data(r), layerName, useData(r).timesUsec, useData(r).channels, cellstr(repmat('Event',length(useData(r).timesUsec),1))); 
@@ -161,7 +168,7 @@ if scoreDetections
   for r = 1: length(runThese)
     if ~isempty(these{runThese(r)})
       close all force;
-      f_scoreDetections(session.data(r), layerName, allData(runThese(r)).timesUsec(these{r},:), [1:4], 'testing', dataKey(runThese(r),:));
+      f_scoreDetections(session.data(r), layerName, allData(runThese(r)).timesUsec(these{runThese(r)},:), [1:4], 'testing', dataKey(runThese(r),:));
       keyboard;
     end
   end

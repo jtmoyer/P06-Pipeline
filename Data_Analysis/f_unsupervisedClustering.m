@@ -4,58 +4,57 @@ function allData = f_unsupervisedClustering(session, allData, funcInds, runThese
 %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
 %   'params'    -   Structure containing parameters for the analysis
 % 
-%    dbstop in f_unsupervisedClustering at 22
+%    dbstop in f_unsupervisedClustering at 11
 
   %.....
   % code that sets a threshold and removes detections above it
   featurePts = [];
   for r = 1: length(runThese)
     featurePts = [featurePts; reshape([allData(r).features{:,funcInds}], {}, length(funcInds))];
-%   end
+  end
   
 %     featurePts = (featurePts - mean(featurePts)) / std(featurePts);
     
-    try
+  try
 
-      % %  code for thresholding
+    % %  code for thresholding
 %     binWidth = (max(featurePts)-min(featurePts)) / 20;
-    binWidth = 1;
-    bins = floor(min(featurePts)):binWidth:ceil(max(featurePts));
-    h1 = hist(featurePts, bins);
-  %   bar(bins, h1);
+  binWidth = 1;
+  bins = floor(min(featurePts)):binWidth:ceil(max(featurePts));
+  h1 = hist(featurePts, bins);
+%   bar(bins, h1);
 %     localMinima = [false diff(sign(diff(h1))) > 0 true];
-  %   topTwoThirds = (1:nbins) > nbins/3;
+%   topTwoThirds = (1:nbins) > nbins/3;
 %     atLeast = bins > 0.5;
 %     aboveMedian = bins > hist(median(featurePts),bins);
 %     aboveInflection = logical([0 0 0 diff(sign(diff(diff(h1)))) > 0]);
 % inflection point: when second derivative changes from negative to positive
 % ie, diff(sign(second derivative)) > 0
 %     thresh = bins(aboveInflection);
-    thresh = bins(bins > threshold);
-    thresh = thresh(1) - binWidth/2;  % set thresh to left edge
-    fprintf('%s: threshold = %0.3f\n', session.data(r).snapName, thresh);
-  % remove values greater than threshold
-  % too look at what's being removed on portal, switch to a <=
-    catch
-      thresh = max(featurePts) + 1; % don't remmove anything
-    end
-    if params.lookAtArtifacts
-      cIdx = (featurePts <= repmat(thresh, length(featurePts), 1));
-    else
-      cIdx = (featurePts > repmat(thresh, length(featurePts), 1));
-    end
+  thresh = bins(bins > threshold);
+  thresh = thresh(1) - binWidth/2;  % set thresh to left edge
+  fprintf('%s: threshold = %0.3f\n', session.data(r).snapName, thresh);
+% remove values greater than threshold
+% too look at what's being removed on portal, switch to a <=
+  catch
+    thresh = max(featurePts) + 1; % don't remmove anything
+  end
+  if params.lookAtArtifacts
+    cIdx = (featurePts <= repmat(thresh, length(featurePts), 1));
+  else
+    cIdx = (featurePts > repmat(thresh, length(featurePts), 1));
+  end
 
 % %  code for gaussian mixture model
 %       gmFit = gmdistribution.fit(featurePts(featurePts<100),2);
 %       cIdx = logical(cluster(gmFit, featurePts) - 1);
 
-    if params.plot3DScatter 
-      try
-        h = f_plot3DScatter(featurePts, cIdx, funcInds);
-      catch
-      end
-      print(h, fullfile(runDir, 'output', 'Figures', [session.data(r).snapName '_scatter.png']), '-dpng');
+  if params.plot3DScatter 
+    try
+      h = f_plot3DScatter(featurePts, cIdx, funcInds);
+    catch
     end
+    print(h, fullfile(runDir, 'output', 'Figures', [session.data(r).snapName '_scatter.png']), '-dpng');
   end
   
   % set artifact points to 1, non artifacts to 0

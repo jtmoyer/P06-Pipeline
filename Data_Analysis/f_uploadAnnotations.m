@@ -12,7 +12,7 @@ function f_uploadAnnotations(dataset,layerName,eventTimesUSec,eventChannels,labe
 %files(d).name(1:15)
 %   v2 3/15/2015 - Hoameng Ung - added variable channel support
 %   
-%   dbstop in f_uploadAnnotations at 26;
+%   dbstop in f_uploadAnnotations at 20;
   try
     ann = [];
 %     fprintf('Creating annotations...');
@@ -45,6 +45,9 @@ function f_uploadAnnotations(dataset,layerName,eventTimesUSec,eventChannels,labe
 %     fprintf('done!\n');
   catch err
     fprintf('No annotations uploaded.\n');
-    rethrow(err);
+    if isempty(eventChannels)
+    else
+      rethrow(err);
+    end
   end
 end
