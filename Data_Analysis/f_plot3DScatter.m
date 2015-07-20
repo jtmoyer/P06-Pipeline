@@ -21,6 +21,9 @@ function h1 = f_plot3DScatter(featurePts, idx, funcInds)
     xlabel('Feature 1'); ylabel('Feature 2'); zlabel('Feature 3');
   end
   legend('Event', 'Artifact');
+  xlabel('Feature value');
+  ylabel('Number of initial detections');
+  title('Distribution of initial detections');
   hold off;
 %   pause; 
 end

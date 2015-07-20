@@ -15,7 +15,7 @@ runThese = [7:12,14:34]; % use index value in data key
 layerName = 'seizure-linelength-output';  % name of the layer to save to disk
 outputDir = 'C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Backup_Annots'; % output directory for file
 
-saveAnnotations = 1;  % flag to prevent script from overwriting data accidentally
+saveAnnotations = 0;  % flag to prevent script from overwriting data accidentally
 
 %% Load investigator data key
 switch study

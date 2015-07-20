@@ -14,7 +14,7 @@ runThese = [1:34]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
 params.channels = 1:4;
 params.label = 'seizure';
 params.technique = 'linelength';
-params.startTime = '1:00:00:00';  % day:hour:minute:second, in portal time
+params.startTime = '1:00:25:30';  % day:hour:minute:second, in portal time
 params.endTime = '0:00:00:00'; % day:hour:minute:second, in portal time
 params.lookAtArtifacts = 0; % lookAtArtifacts = 1 means keep artifacts to see what's being removed
 layerName = sprintf('%s-%s', params.label, params.technique);
@@ -23,9 +23,10 @@ numDetections = 200;
 eventDetection = 0;
 unsupervisedClustering = 0;
 addAnnotations = 0;  
-scoreDetections = 1;
+scoreDetections = 0;
 calculatePerformance = 0;
 boxPlot = 0;
+runStatistics = 1;
 
 %% Load investigator data key
 switch study
@@ -124,7 +125,7 @@ if unsupervisedClustering
 %   useTheseFeatures = [2]; % which feature functions to use for clustering?
 %   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
 %   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
-  useTheseFeatures = [4]; % which feature functions to use for clustering?
+  useTheseFeatures = [3]; % which feature functions to use for clustering?
   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 4.5);
   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 1);
 
@@ -175,16 +176,25 @@ if scoreDetections
 end
 
 if calculatePerformance
-  scores = f_calculatePerformance(session, runThese, 'seizure-linelength-output', 'testing')
+  scores = f_calculatePerformance(session, runThese, 'seizure-linelength-just3', 'testing')
+  sensitivity = scores.truePositive / (scores.truePositive + scores.falseNegative)
+  specificity = scores.trueNegative / (scores.falsePositive + scores.trueNegative)
+  accuracy = (scores.truePositive + scores.trueNegative) / ...
+    (scores.truePositive + scores.falseNegative + scores.falsePositive + scores.trueNegative)
 end
 
 %% Analyze results
 if boxPlot
-  f_boxPlot(session, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
-%   f_boxPlotPerDay(session, runDir, runThese, dataKey, 'seizure-linelength-output'); % 'SVMSeizure-2');  
+  perDay = 0;  % per day = 1 means break data into days; per day = 0 means plot per rat
+  inputLayer = 'seizure-linelength';
+  f_boxPlot(session, runDir, runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
   fprintf('Box plot: %s-%s\n', params.label, params.technique);
   toc
 end
 
-
+if runStatistics
+  perDay = 1;  % per day = 1 means break data into days; per day = 0 means plot per rat
+  inputLayer = 'seizure-linelength';
+  pValues = f_statistics(session, runDir, runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
+end
 

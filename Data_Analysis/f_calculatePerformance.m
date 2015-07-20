@@ -1,6 +1,6 @@
 function scores = f_calculatePerformance(session, runThese, outputLayer, testingPrefix)
 
-%   dbstop in f_calculatePerformance at 29
+%   dbstop in f_calculatePerformance at 13
 
   outputEvents = [];
   testEvents = [];
@@ -26,21 +26,27 @@ function scores = f_calculatePerformance(session, runThese, outputLayer, testing
   
     % if it's in outputEvents - it's a detection
     % if not, it's an artifact
-    startTimes = [outputEvents.start];
-    for i = 1: length(testEvents)
-      if ismember(testEvents(i).start, startTimes)
-        scores.truePositive = scores.truePositive + 1;
-      else
-        scores.falseNegative = scores.falseNegative + 1;
+    try
+      startTimes = [outputEvents.start];
+      for i = 1: length(testEvents)
+        if ismember(testEvents(i).start, startTimes)
+          scores.truePositive = scores.truePositive + 1;
+        else
+          scores.falseNegative = scores.falseNegative + 1;
+        end
       end
+    catch
     end
 
-    for i = 1: length(testArtifacts)
-      if ismember(testArtifacts(i).start, startTimes)
-        scores.falsePositive = scores.falsePositive + 1;
-      else
-        scores.trueNegative = scores.trueNegative + 1;
+    try
+      for i = 1: length(testArtifacts)
+        if ismember(testArtifacts(i).start, startTimes)
+          scores.falsePositive = scores.falsePositive + 1;
+        else
+          scores.trueNegative = scores.trueNegative + 1;
+        end
       end
+    catch
     end
   end
 end

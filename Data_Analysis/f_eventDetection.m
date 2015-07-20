@@ -4,7 +4,7 @@ function f_eventDetection(dataset, params, runDir, dataRow)
   %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
   %   'params'    -   Structure containing parameters for the analysis
   % 
-  dbstop in f_eventDetection at 10
+%   dbstop in f_eventDetection at 10
   
   leftovers = 0; % simple counter to find events that are extend beyond the end of a block
   % for simplicty these events are just terminated at the end of the block
@@ -123,11 +123,11 @@ function f_eventDetection(dataset, params, runDir, dataRow)
         p = p + 1;
         keyboard;
  
-        % plots for AES       
-        figure(2); hold on;
-        for c = 1: 4
-          plot((time(dataIdx)-leftTime)/1e6/60, c+data(dataIdx,c)/max(data(dataIdx,c)), 'Color', [0.5 0.5 0.5]);          
-        end
+%         % plots of signal data, a la portal       
+%         figure(2); hold on;
+%         for c = 1: 4
+%           plot((time(dataIdx)-leftTime)/1e6/60, c+data(dataIdx,c)/max(data(dataIdx,c)), 'Color', [0.5 0.5 0.5]);          
+%         end
         
        clf;
       end

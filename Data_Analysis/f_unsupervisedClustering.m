@@ -4,7 +4,7 @@ function allData = f_unsupervisedClustering(session, allData, funcInds, runThese
 %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
 %   'params'    -   Structure containing parameters for the analysis
 % 
-%    dbstop in f_unsupervisedClustering at 11
+   dbstop in f_unsupervisedClustering at 12
 
   %.....
   % code that sets a threshold and removes detections above it

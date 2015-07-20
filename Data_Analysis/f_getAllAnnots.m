@@ -15,7 +15,7 @@ function [allEvents, timesUSec, channels, varargout] = f_getAllAnnots(dataset, l
   % 8/26/2014 - updated to return times and channels
   % 8/28/2014 - changed input to annLayer Str
   
-%   dbstop in f_getAllAnnots at 44
+%   dbstop in f_getAllAnnots at 20
   
   allEvents = [];
   timesUSec = [];
@@ -24,9 +24,9 @@ function [allEvents, timesUSec, channels, varargout] = f_getAllAnnots(dataset, l
   startTime = 0;
   allChan = [dataset.channels];
   allChanLabels = {allChan.label};
-  annLayer = dataset.annLayer(strcmp(layerName,{dataset.annLayer.name}));
   while true
-    try
+    try  
+      annLayer = dataset.annLayer(strcmp(layerName,{dataset.annLayer.name}));
       currEvents = annLayer.getEvents(startTime,1000);
     catch
       fprintf('%s: %s layer not found:\n', dataset.snapName, layerName);
