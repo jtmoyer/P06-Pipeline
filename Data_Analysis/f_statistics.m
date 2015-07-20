@@ -105,51 +105,99 @@ function pValues = f_statistics(session, runDir, runThese, dataKey, layerName, i
     print(h, fullfile(runDir, 'output', 'Figures', [uniqueGroups{groupCombos(g,1)} '_' uniqueGroups{groupCombos(g,2)} '_pvalue.png']), '-dpng');
   end
   
-  %   % create column vectors of data
-%   eventsPerDayCol = [];
-%   groupsPerDayCol = [];
-%   for r = 1:size(eventsPerDay,1)
-%     eventsPerDayCol = [eventsPerDayCol; eventsPerDay{r}(:)];
-%     groupsPerDayCol = [groupsPerDayCol; repmat(groupName(r), size(eventsPerDay{r}(:)))];
-%   end
+  % create box plot
+  eventsPerDayCol = [];
+  groupsPerDayCol = [];
+  for r = 1:size(eventsPerDay,1)
+    eventsPerDayCol = [eventsPerDayCol; eventsPerDay{r}(:)];
+    groupsPerDayCol = [groupsPerDayCol; repmat(groupName(r), size(eventsPerDay{r}(:)))];
+  end
 %   uniqueGroups = unique(groupsPerDayCol);
-%   groupCombos = nchoosek(1:length(uniqueGroups),2);
-%   
-%   tValues = nan(numTrials+1, 1);
-%   pValues = cell(size(groupCombos,1), 3);
-%   for g = 1: size(groupCombos,1)
-%     idx1 = strcmp(g, uniqueGroups(groupCombos(g,1)));
-%     idx2 = strcmp(groupsPerDayCol, uniqueGroups(groupCombos(g,2)));
-%     groupData = [[eventsPerDayCol(idx1) repmat(groupCombos(g,1), sum(idx1), 1)]; ...
-%       [eventsPerDayCol(idx2) repmat(groupCombos(g,2), sum(idx2), 1)]];
-%     [~, ~, ~, tSTATS] = ttest2(groupData(groupData(:,2) == groupCombos(g,1)), groupData(groupData(:,2) == groupCombos(g,2)));
-%     tValues(1) = tSTATS.tstat;  % tValues(1) is the t-value for the real data
-%     permutations = randi(2, [length(groupData) numTrials]);
-%     
-%     for n = 1: numTrials
-% %       a = groupData(permutations(:,n) == 1);
-% %       b = groupData(permutations(:,n) == 2);
-% %       [~, ~, ~, testSTATS] = ttest2(a,b)
-%       [~, ~, ~, tSTATS] = ttest2(groupData(permutations(:,n) == 1), groupData(permutations(:,n) == 2));
-%       tValues(n+1) = tSTATS.tstat;
-%     end
-%     
-%     pValues{g,1} = uniqueGroups{groupCombos(g,1)};
-%     pValues{g,2} = uniqueGroups{groupCombos(g,2)};
-%     if tValues(1) < mean(tValues)
-%       pValues{g,3} = sum(tValues < tValues(1)) / length(tValues);
-%     else 
-%       pValues{g,3} = sum(tValues > tValues(1)) / length(tValues);
-%     end
-%     
-%     [counts, centers] = hist(tValues(2:end),10);
-%     h = figure(1);
-%     bar(centers,counts);
-%     line([tValues(1) tValues(1)], [0 max(counts)], 'Color', 'r');
-%     ylabel('Count');
-%     xlabel('tValues');
-%     title([uniqueGroups{groupCombos(g,1)} ' vs ' uniqueGroups{groupCombos(g,2)}]);
-%     legend('Shuffled', 'Actual', 'Location', 'NorthWest');
-%     print(h, fullfile(runDir, 'output', 'Figures', [uniqueGroups{groupCombos(g,1)} '_' uniqueGroups{groupCombos(g,2)} '_pvalue.png']), '-dpng');
+  figure(1); h = boxplot(eventsPerDayCol, groupsPerDayCol, 'groupOrder', uniqueGroups); hold on;
+  xlabel('Treatment Group');
+  ylabel('Postulated Epileptiform Events per Day');
+  title(layerName);
+
+  % overlay data points on top of box plot
+  for r = 1: length(uniqueGroups)
+    inds = cellfun(@strcmp, groupsPerDayCol, cellstr(repmat(uniqueGroups{r}, size(groupsPerDayCol))));
+    plot(repmat(r, size(inds(inds==1))), eventsPerDayCol(inds), 'o', 'MarkerSize', 6);
+  end
+  
+%   % look at distribution - is it gaussian?
+%   figure(2); 
+%   for r = 1: length(uniqueGroups)
+%     subplot(length(uniqueGroups),1,r);
+%     inds = cellfun(@strcmp, groupsPerDayCol, cellstr(repmat(uniqueGroups{r}, size(groupsPerDayCol))));
+%     y = hist(eventsPerDayCol(inds),20);
+%     bar(y);
+%     title(uniqueGroups{r});
 %   end
+  
+  % perform ranksum test, use sigstar to plot significance levels
+  figure(1);
+  sigcell = {};
+  sigprob = [];
+  for r = 1: length(uniqueGroups)
+    inds = cellfun(@strcmp, groupsPerDayCol, cellstr(repmat(uniqueGroups{r}, size(groupsPerDayCol))));
+    fprintf('\nGroup: %s   Total number of days recorded: %d\n', uniqueGroups{r}, length(find(inds)));
+    for j = r+1: length(uniqueGroups)
+      inds2 = cellfun(@strcmp, groupsPerDayCol, cellstr(repmat(uniqueGroups{j}, size(groupsPerDayCol))));
+      [p(r,j) h0(r,j)] = ranksum(eventsPerDayCol(inds), eventsPerDayCol(inds2));
+      fprintf('\nTest %s vs %s, p = %0.3f, h = %d\n', uniqueGroups{r}, uniqueGroups{j}, p(r,j), h0(r,j));
+      sigcell = [sigcell, [r j]];
+%       sigprob = [sigprob p(r,j)];
+      sigprob = [pValues{1:end,3}]'
+    end
+  end
+  sigstar(sigcell, sigprob);
+%   ylim([0 400]);
+
+  
+  % plot rats individually to get a sense where the data points are
+%   eventsPerDay(isempty(eventsPerDay)) = 0;
+  colors = ['k' 'b' 'r' 'g'];
+  figure(3); hold on;
+  h2 = zeros(length(runThese),1);
+  for r = 1:size(eventsPerDay,1)
+    animalNumber = str2double(session.data(r).snapName(9:10));
+    c = strcmp(uniqueGroups, groupName{r});
+    if perDay
+      h2(c) = plot(repmat(animalNumber, size(eventsPerDay{r})), eventsPerDay{r}, 'Marker', '.', 'Color', colors(c));
+    else
+      try
+        [allEvents, ~, ~, ~] = f_getAllAnnots(session.data(r), inputLayer);
+        artifactsPerDay{r} = length(allEvents) - eventsPerDay{r};   
+      catch
+      end
+      if ~isempty(eventsPerDay{r})
+        h2(c) = bar(animalNumber, eventsPerDay{r}, 'FaceColor', colors(c));
+      end
+    end
+  end
+  
+  legend(h2, uniqueGroups{1:4});  
+  title(layerName);
+  ylim([0 400]);
+  
+  if ~perDay
+    % Create bar plot of events and artifacts
+    figure(4); colormap('hot');
+    for r = 1: length(artifactsPerDay)
+      if isempty(artifactsPerDay{r})
+        artifactsPerDay{r} = 0;
+      end
+    end
+    for r = 1: length(eventsPerDay)
+      if isempty(eventsPerDay{r})
+        eventsPerDay{r} = 0;
+      end
+    end
+    data = [[eventsPerDay{:}]' [artifactsPerDay{:}]'];
+    bar(data,'grouped');
+    legend('Events','Artifacts');
+    xlabel('Animal Number');
+    ylabel('Count');
+    title('Distribution of events/artifacts per animal');
+  end
 end

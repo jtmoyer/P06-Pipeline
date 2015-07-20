@@ -14,8 +14,8 @@
 % 'portalTime 02-Jan-2015 08:44:10 = actualTime 10-May-2008 22:03:16'
 
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-portalId = 'I023_A0011_D009';
-convertFromPortalToActual = '3:08:08:54';  % 'dd:HH:MM:SS'; 01:00:00:00 = start time of portal
+portalId = 'I023_A0019_D001';
+convertFromPortalToActual = '01:00:50:37';  % 'dd:HH:MM:SS'; 01:00:00:00 = start time of portal
 convertFromActualToPortal = '4/26/2014 14:54:22';  % mm/dd/yyyy HH:MM:SS PM
 
 %%.......
@@ -33,6 +33,10 @@ fh = str2func(['f_' study '_data_key']);
 dataKey = fh();
 
 idx = find(strcmp(dataKey.portalId, portalId));
+
+if isempty(idx)
+  error('Animal not found - check portalId.');
+end
 
 dateOffset = datenum(dataKey.startSystem(idx), 'dd-mmm-yyyy HH:MM:SS') - datenum('01:00:00:00', 'dd:HH:MM:SS');
 

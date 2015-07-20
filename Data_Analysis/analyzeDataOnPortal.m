@@ -10,7 +10,7 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
 %% Define constants for the analysis
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1:34]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
+runThese = [23]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
 params.channels = 1:4;
 params.label = 'seizure';
 params.technique = 'linelength';
@@ -23,10 +23,9 @@ numDetections = 200;
 eventDetection = 0;
 unsupervisedClustering = 0;
 addAnnotations = 0;  
-scoreDetections = 0;
+scoreDetections = 1;
 calculatePerformance = 0;
-boxPlot = 0;
-runStatistics = 1;
+runStatistics = 0;
 
 %% Load investigator data key
 switch study
