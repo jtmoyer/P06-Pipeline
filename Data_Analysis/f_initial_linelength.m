@@ -1,10 +1,28 @@
 function output = f_initial_linelength(data, params, fs, curTime)
-% Usage: f_burst_linelength(dataset, params)
-% Input: 
-%   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
-%   'params'    -   Structure containing parameters for the analysis
-% 
-%    dbstop in f_seizure_linelength at 23
+  %	Usage: params = f_initial_XXXX(data, params, fs, curTime);
+  % Called by f_initialDetection()
+  %	
+  % f_initial_XXXX calculates a given feature using a sliding window
+  % 
+  % Input:
+  %   params		-	a structure containing settings for the feature (see
+  %     f_initialDetection documentation for more detail)
+  %   data - block of data to process
+  %   fs - sampling frequency of the data, in Hz
+  %   curTime - time of the first sample of data block, in microseconds
+  %
+  % Output:
+  %   output  - M x N+1 column matrix.  First column is the time in
+  %   microseconds of the right aligned sliding window.  The remaining N
+  %   columns are the feature calculated for each channel (N channels).  M
+  %   depends on the size of data block and duration/offset of the window.
+  %
+  % Jason Moyer 7/20/2015 
+  % University of Pennsylvania Center for Neuroengineering and Therapeutics
+  %
+  % History:
+  % 7/20/2015 - v1 - creation
+  %.............
 
   %%-----------------------------------------
   %%---  feature creation and data processing
@@ -19,7 +37,7 @@ function output = f_initial_linelength(data, params, fs, curTime)
   data = high_pass_filter(data, fs);
   data = low_pass_filter(data, fs);
   rmsdata = rms(data,1);
-  rmsdata(rmsdata > params.rmsArtifactThresh) = NaN;
+%   rmsdata(rmsdata > params.rmsArtifactThresh) = NaN;
   filtOut = data ./ repmat(rmsdata,size(data,1),1);
 %   normalizer = max(std(data)) ./ std(data);
 %   for c = 1: length(params.channels)

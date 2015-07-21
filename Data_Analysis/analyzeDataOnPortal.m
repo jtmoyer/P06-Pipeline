@@ -1,96 +1,116 @@
-%% Jensen_wrapper.m
-% This script load data and annotations from the portal, analyzes the data,
-% performs clustering, then uploads the results back to the portal.
+%% analyzeDataOnPortal.m
+% Use this script to interact with and analyze datasets on the portal.
+% This is referred to throughout the documentation as the IEEG Pipeline.
+%
+% The algorithm is intended to be used as follows:
+%   -> perform initial event detection - calculate a simple feature using a
+%     sliding window and look for places where the feature crosses a
+%     threshold for a minimum amount of time
+%
+%   -> upload these initial event detections back to the portal
+%
+%   -> manually review the detections on the portal and tune the initial
+%     event detections (threshold and minimum duration)
+%
+%   -> create a test data set using the initial detections - this data set
+%     will include both events and artifacts
+%
+%   -> upload these test detections to the portal as a separate layer
+%
+%   -> perform artifact removal on the initial event detections - define
+%     a given feature and identify a threshold to separate events from 
+%     artifacts.  This can be tuned to optimize performance on the test
+%     dataset
+%
+%   -> upload remaining detections to the portal as a final output layer
+%
+% Jason Moyer 7/20/2015 
+% University of Pennsylvania Center for Neuroengineering and Therapeutics
+%
+% History:
+% 7/20/2015 - v1 - creation
+%.............
 
 clearvars -except session allData;
 close all force; clc; tic;
-addpath('C:\Users\jtmoyer\Documents\MATLAB\');
-addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\libsvm-3.18'));
-addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
-%% Define constants for the analysis
-study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [23]; % training data = 2,3,19,22,24,25,26; 1:5,7:12,14:34
-params.channels = 1:4;
-params.label = 'seizure';
-params.technique = 'linelength';
-params.startTime = '1:00:25:30';  % day:hour:minute:second, in portal time
-params.endTime = '0:00:00:00'; % day:hour:minute:second, in portal time
-params.lookAtArtifacts = 0; % lookAtArtifacts = 1 means keep artifacts to see what's being removed
-layerName = sprintf('%s-%s', params.label, params.technique);
-numDetections = 200;
 
-eventDetection = 0;
-unsupervisedClustering = 0;
-addAnnotations = 0;  
-scoreDetections = 1;
-calculatePerformance = 0;
-runStatistics = 0;
+%% Define constants and parameters for the analysis
+% Parameters which are frequently adjusted are included here.  Less
+% frequently used parameters are loaded in f_setEnvironment().
+params.homeDirectory = 'C:\Users\jtmoyer\Documents\MATLAB\';
+params.study = 'jensen';       % string indicating which dataset to analyze, ie 'jensen'
+params.runThese = [23];        % which datasets to run, use indices in dataKey.index 
+params.channels = 1:4;         % which channels to analyze
 
-%% Load investigator data key
-switch study
-  case 'dichter'
-    rootDir = 'Z:\public\DATA\Animal_Data\DichterMAD';  % where original data is sotred
-    runDir = 'C:\Users\jtmoyer\Documents\MATLAB\P05-Dichter-data';  % investigator specific directory, for .xls, .doc files etc.
-  case 'jensen'
-    rootDir = 'Z:\public\DATA\Animal_Data\Frances_Jensen';  % where original data is sotred
-    runDir = 'C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data';
-  case 'chahine'
-    rootDir = 'Z:\public\DATA\Human_Data\SleepStudies';   
-    runDir = 'C:\Users\jtmoyer\Documents\MATLAB\P03-Chahine-data';
-  case 'pitkanen'
-    addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\P01-Pitkanen-data')); 
-end
-addpath(genpath(runDir));
-fh = str2func(['f_' study '_data_key']);
-dataKey = fh();
-fh = str2func(['f_' study '_params']);
-params = fh(params)
-fh = str2func(['f_' study '_define_features']);
-featFn = fh();
+params.initialDetection = 1;     % run initial event detection? 0/1
+params.feature = 'linelength';   % feature to use for initial event detection
+params.startTime = '1:00:00:00'; % day:hour:minute:second, in portal time
+params.endTime = '1:01:00:00';   % day:hour:minute:second, in portal time
+params.minThresh = 2e2;       % minimum threshold for initial event detection
+params.minDur = 10;           % sec; minimum duration for detections
+params.viewInitialDetectionPlot = 0; % view plot of feature overlaid on signal, 0/1
+
+params.scoreDetections = 1;   % create and hand-score a test dataset, requires initial event detections
+params.numDetections = 200;   % number of detections tp generate for test dataset
+params.inputLayer = 'seizure-linelength';
+params.testPrefix = 'testing';   % prefix for testing data layer
+
+params.artifactRemoval = 0;   % remove artifacts from detections
+params.outputLayer = 'seizure-linelength-output';
+params.lookAtArtifacts = 0;   % lookAtArtifacts=0, upload detections; =1, upload artifacts
+params.plot3DScatter = 1;
+
+params.calculatePerformance = 0; % test algorithm performance against test set
+
+params.runStatistics = 0;     % create box plot and run permutation and ranksum test
+
+params.addAnnotations = 0;    % add annotations to portal or not?  0-no, 1-yes
+
+
+%% Load investigator specific information
+[dataKey, params, featFn] = f_setEnvironment(params);
 
 
 %% Establish IEEG Sessions
-% Establish IEEG Portal sessions.
-% Load session if it doesn't exist.
+% Establish IEEG Portal sessions.  Constantly clearing and reestablishing
+% sessions will eventually cause an out of memory error, so a better way to
+% do it is to only clear and reload if runThese changed.
+% First, load session if it doesn't exist.
 if ~exist('session','var')  % load session if it does not exist
-  session = IEEGSession(dataKey.portalId{runThese(1)},'jtmoyer','jtm_ieeglogin.bin');
-%   session = IEEGSession(dataKey.portalId{runThese(1)},'jtmoyer','jtm_ieeglogin.bin','qa');
+  session = IEEGSession(dataKey.portalId{params.runThese(1)},'jtmoyer','jtm_ieeglogin.bin');
   for r = 2:length(runThese)
-    session.openDataSet(dataKey.portalId{runThese(r)});
+    session.openDataSet(dataKey.portalId{params.runThese(r)});
   end
 else    % clear and throw exception if session doesn't have the right datasets
-  if (~strcmp(session.data(1).snapName, dataKey.portalId{runThese(1)})) || ...
-      (length(session.data) ~= length(runThese))
+  if (~strcmp(session.data(1).snapName, dataKey.portalId{params.runThese(1)})) || ...
+      (length(session.data) ~= length(params.runThese))
     clear all;
     error('Need to clear session data.  Re-run the script.');
   end
 end
 
 
-%% Feature detection 
-fig_h = 1;
-if eventDetection
-  for r = 1:length(runThese)
-    fprintf('Running %s_%s on: %s\n',params.label, params.technique, session.data(r).snapName);
-    f_eventDetection(session.data(r), params, runDir, dataKey(runThese(r),:));
-    if addAnnotations
-      f_addAnnotations(session.data(r), params, runDir); 
-    end;
+%% Initial event detection 
+%   -> perform initial event detection - calculate a simple feature using a
+%     sliding window and look for places where the feature crosses a
+%     threshold for a minimum amount of time
+if params.initialDetection
+  fprintf('Running initial detections using: %s\n', params.feature);
+  for r = 1:length(params.runThese)
+    f_initialDetection(session.data(r), params, dataKey(params.runThese(r),:));
     toc
   end
 end
 
 
 %% LEO - ignore everything below this
-%.....................................
-%.....................................
 if ~exist('allData', 'var')
   try
     load('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat');
   catch
-    allData = struct('index', dataKey.portalId, 'channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
-    for r = 1:length(runThese)
+    allData = struct('index', dataKey.portalId, 'channels', cell(length(params.runThese),1), 'timesUsec', cell(length(params.runThese),1), 'features', cell(length(params.runThese),1), 'labels', cell(length(params.runThese),1));
+    for r = 1:length(params.runThese)
       [allData(r).channels, clips, allData(r).timesUsec, allData(r).labels] = f_loadDataClips(session.data(r), params, runDir);
       allData(r).features = f_calculateFeatures(allData(r), clips, featFn);
     end
@@ -125,12 +145,12 @@ if unsupervisedClustering
 %   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
 %   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
   useTheseFeatures = [3]; % which feature functions to use for clustering?
-  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 4.5);
+  useData = f_unsupervisedClustering(session, useData, useTheseFeatures, params.runThese, params, runDir, 4.5);
   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 1);
 
   layerName = sprintf('%s-%s-%s', params.label, params.technique, 'just3-artifact');
-  for r = 1:length(runThese)
-    if addAnnotations 
+  for r = 1:length(params.runThese)
+    if params.addAnnotations 
       f_uploadAnnotations(session.data(r), layerName, useData(r).timesUsec, useData(r).channels, cellstr(repmat('Event',length(useData(r).timesUsec),1))); 
     end;
   end
@@ -139,7 +159,7 @@ end
 
 %% Score detections
 if scoreDetections
-%   f_boxPlot(session, runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
+%   f_boxPlot(session, params.runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
   if ~exist('allData', 'var') 
     load('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat');
   end
@@ -165,17 +185,17 @@ if scoreDetections
     end
   end
 
-  for r = 1: length(runThese)
-    if ~isempty(these{runThese(r)})
+  for r = 1: length(params.runThese)
+    if ~isempty(these{params.runThese(r)})
       close all force;
-      f_scoreDetections(session.data(r), layerName, allData(runThese(r)).timesUsec(these{runThese(r)},:), [1:4], 'testing', dataKey(runThese(r),:));
+      f_scoreDetections(session.data(r), layerName, allData(params.runThese(r)).timesUsec(these{params.runThese(r)},:), [1:4], 'testing', dataKey(params.runThese(r),:));
       keyboard;
     end
   end
 end
 
 if calculatePerformance
-  scores = f_calculatePerformance(session, runThese, 'seizure-linelength-just3', 'testing')
+  scores = f_calculatePerformance(session, params.runThese, 'seizure-linelength-just3', 'testing')
   sensitivity = scores.truePositive / (scores.truePositive + scores.falseNegative)
   specificity = scores.trueNegative / (scores.falsePositive + scores.trueNegative)
   accuracy = (scores.truePositive + scores.trueNegative) / ...
@@ -186,7 +206,7 @@ end
 if boxPlot
   perDay = 0;  % per day = 1 means break data into days; per day = 0 means plot per rat
   inputLayer = 'seizure-linelength';
-  f_boxPlot(session, runDir, runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
+  f_boxPlot(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
   fprintf('Box plot: %s-%s\n', params.label, params.technique);
   toc
 end
@@ -194,6 +214,6 @@ end
 if runStatistics
   perDay = 1;  % per day = 1 means break data into days; per day = 0 means plot per rat
   inputLayer = 'seizure-linelength';
-  pValues = f_statistics(session, runDir, runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
+  pValues = f_statistics(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
 end
 

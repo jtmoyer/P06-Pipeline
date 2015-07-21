@@ -1,12 +1,51 @@
-function f_eventDetection(dataset, params, runDir, dataRow)
-  % Usage: f_feature_energy(dataset, params)
-  % Input: 
-  %   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
-  %   'params'    -   Structure containing parameters for the analysis
+function f_initialDetection(dataset, params, dataRow)
+  %	Usage: f_initialDetection(dataset, params, dataRow);
+  % Should be called by analyzeDataOnPortal.m
+  %	
+  %	f_initialDetection() will call f_initial_XXXX to perform event detection by
+  % calculating a simple feature using a sliding window and then looking for
+  % places where the feature crosses a threshold for a minimum amount of time
+  %
+  % XXXX = params.feature, something like 'linelength'
   % 
-%   dbstop in f_eventDetection at 10
-  
-  leftovers = 0; % simple counter to find events that are extend beyond the end of a block
+  % Note that f_initialDetections() contains supporting code for plotting and
+  % saving data, while f_initial_XXXX does the actual sliding window and
+  % feature calculation.  The idea is that f_initial_XXXX can be hacked
+  % together while f_initialDetections() supports the feature development.
+  % You can start and end at specific times in the file, this helps tune the
+  % detector by finding sample detections and then seeing what a given
+  % threshold/window duration will find.
+  %
+  % Input:
+  %   dataset - single IEEG dataset
+  %   params		-	a structure containing at least the following:
+  %     params.startTime = '1:00:00:00'; % day:hour:minute:second, in portal time
+  %     params.endTime = '1:01:00:00';   % day:hour:minute:second, in portal time
+  %     params.minThresh = 2e2;       % minimum threshold for initial event detection
+  %     params.minDur = 10;           % sec; minimum duration for detections
+  %     params.viewInitialDetectionPlot = 1;  % view plot of feature overlaid on signal, 0/1
+  %     params.function = @(x) (sum(abs(diff(x)))); % feature function
+  %     params.windowLength = 2;         % sec, duration of sliding window
+  %     params.windowDisplacement = 1;    % sec, amount to slide window
+  %     params.blockDurMinutes = 15;      % minutes; amount of data to pull at once
+  %     params.smoothDur = 20;   % sec; width of smoothing window
+  %     params.maxThresh = params.minThresh*4;  
+  %     params.maxDur = 120;    % sec; min duration of the seizures
+  %     params.plotWidth = 1; % minutes, if plotting, how wide should the plot be?
+  %   datarow - row from dataKey table corresponding to this dataset
+  %
+  % Output:
+  %   to portal -> detections uploaded to portal as a layer called 'initial-XXXX'
+  %   to file -> eg 'I023_A0001_D001-annot-initial-XXXX.txt - start/stop times of annots
+  %
+  % Jason Moyer 7/20/2015 
+  % University of Pennsylvania Center for Neuroengineering and Therapeutics
+  %
+  % History:
+  % 7/20/2015 - v1 - creation
+  %.............
+
+  leftovers = 0; % simple counter to find events that extend beyond the end of a block
   % for simplicty these events are just terminated at the end of the block
 
   % user specifies start/end time for analysis (in portal time), in form day:hour:minute:second
@@ -34,19 +73,12 @@ function f_eventDetection(dataset, params, runDir, dataRow)
   blockSize = params.blockDurMinutes * 60 * 1e6;        % size of block in usecs
 
   % save annotations out to a file so addAnnotations can upload them all at once
-  annotFile = fullfile(runDir, sprintf('/Output/%s-annot-%s-%s',dataset.snapName,params.label,params.technique));
+  annotFile = fullfile(params.homeDirectory, params.runDir, 'Output', ...
+    sprintf('%s-annot-initial-%s', dataset.snapName, params.feature));
   ftxt = fopen([annotFile '.txt'],'w');
   assert(ftxt > 0, 'Unable to open text file for writing: %s\n', [annotFile '.txt']);
   fclose(ftxt);  % this flushes the file
-  save([annotFile '.mat'],'params');
-
-  % if saving feature calculations to a text file, open and clear file
-  if params.saveToDisk
-    featureFile = fullfile(runDir, sprintf('./Output/%s-feature-%s-%s',dataset.snapName,params.label,params.technique));
-    ftxt = fopen([featureFile '.txt'],'w');
-    assert(ftxt > 0, 'Unable to open text file for writing: %s\n', [featureFile '.txt']);
-    fclose(ftxt);  % this flushes the file
-  end
+%   save([annotFile '.mat'],'params');
 
   % for each block (block size is set by user in parameters)
   for b = 1: numBlocks
@@ -72,26 +104,13 @@ function f_eventDetection(dataset, params, runDir, dataRow)
 
     %%-----------------------------------------
     %%---  feature creation and data processing
-    fh = str2func(sprintf('f_%s_%s', params.label, params.technique));
+    fh = str2func(sprintf('f_initial_%s', params.feature));
     output = fh(data,params,fs,curTime);
     %%---  feature creation and data processing
     %%-----------------------------------------
    
-    % save feature calculation to file (optional)
-    if params.saveToDisk
-      try
-        ftxt = fopen([featureFile '.txt'],'a');  % append rather than overwrite
-        assert(ftxt > 0, 'Unable to open text file for appending: %s\n', [featureFile '.txt']);
-        fwrite(ftxt,output,'single');
-        fclose(ftxt);  
-      catch err
-        fclose(ftxt);
-        rethrow(err);
-      end
-    end
-    
     % optional - plot data, width of plot set by user in params
-    if params.viewData 
+    if params.viewInitialDetectionPlot 
       plotWidth = params.plotWidth*60*1e6; % usecs to plot at a time
       numPlots = blockSize/plotWidth;
       time = 1: length(data);
@@ -121,15 +140,9 @@ function f_eventDetection(dataset, params, runDir, dataRow)
         end
         
         p = p + 1;
-        keyboard;
- 
-%         % plots of signal data, a la portal       
-%         figure(2); hold on;
-%         for c = 1: 4
-%           plot((time(dataIdx)-leftTime)/1e6/60, c+data(dataIdx,c)/max(data(dataIdx,c)), 'Color', [0.5 0.5 0.5]);          
-%         end
-        
-       clf;
+        pause;      % pause to view plot
+%        keyboard    % type return in command window to keep going, dbquit to stop
+        clf;        % can change keyboard to pause to move more quickly
       end
     end
 
@@ -167,6 +180,9 @@ function f_eventDetection(dataset, params, runDir, dataRow)
     annotOutput = [annotChannels-1 annotUsec]';
     
     % append annotations to output file
+    % need to upload all annotations in a layer at once, but can't process
+    % the whole file at once, so appending them to a file seems like the
+    % best way to go. 
     if ~isempty(annotOutput)
       try
         ftxt = fopen([annotFile '.txt'],'a'); % append rather than overwrite
@@ -180,4 +196,9 @@ function f_eventDetection(dataset, params, runDir, dataRow)
     end
   end
   fprintf('%d leftover segments.\n', leftovers);
+  
+  % read annotations from file and upload to the portal
+  if params.addAnnotations
+    f_addAnnotations(session.data(r), params, runDir); 
+  end;
 end

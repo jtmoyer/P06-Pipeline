@@ -1,18 +1,30 @@
-function f_addAnnotations(dataset, params, runDir)
-  %	Usage: f_addAnnotations(dataset, params);
-  %	
-  %	dataset		-	IEEGDataset object
-  %	params		-	string label for events
-  %
-  %	Function will upload to the IEEG portal the given events obtained from running various detection
-  %	algorithms (e.g. spike_AR.m). Annotations will be associated with eventChannels and given a label.
-  %
-%   dbstop in f_addAnnotations at 15
+function f_addAnnotations(dataset, params)
+%	Usage: f_addAnnotations(dataset, params);
+% should be called by f_initialDetection()
+%	
+%	f_addAnnotations() adds annotations to the portal.  This is really the
+%	same code as uploadAnnotations but it reads the annotations from file.
+%	The annotations are saved to a file in f_initialDetection since they all
+%	need to be uploaded to the portal at once but large datasets need to be
+%	processed in blocks.
+%
+%
+% Input:
+%   dataset - singe IEEG session dataset
+%   params		-	a structure containing at least the following:
+%     params.homeDirectory
+%     params.runDir  
+%     params.feature 
+%
+% Output:
+%   to portal -> detections uploaded to portal as a layer called 'initial-XXXX'
+%
+% History:
+% 7/20/2015 - v1 - creation
+%.............
 
-  % read in annotations from text file
-  % annotations must be in the form [channels timeStartUSecs timeEndUSecs]
-  % which is a Xx3 matrix, one start/stop time pair to one channel
-  fname = fullfile(runDir, sprintf('./Output/%s-annot-%s-%s.txt',dataset.snapName,params.label,params.technique));
+  annotFile = fullfile(params.homeDirectory, params.runDir, 'Output', ...
+    sprintf('%s-annot-initial-%s', dataset.snapName, params.feature));
   try
     fileExist = dir(fname);
     if fileExist.bytes > 0
