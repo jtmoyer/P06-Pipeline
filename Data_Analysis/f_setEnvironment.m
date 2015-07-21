@@ -44,6 +44,9 @@ function [dataKey, params, featFn] = f_setEnvironment(params)
     case 'chahine'
       params.dataDir = 'Z:\public\DATA\Human_Data\SleepStudies';   
       params.runDir = '.\P03-Chahine-data';
+    case 'bumetanide'
+      params.dataDir = 'Z:\public\DATA\Animal_Data\Frances_Jensen\Frances_Bumetanide';  
+      params.runDir = '.\bumetanide';
   end
   
   addpath(genpath(params.runDir));

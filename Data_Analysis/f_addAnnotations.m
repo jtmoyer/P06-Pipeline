@@ -23,8 +23,8 @@ function f_addAnnotations(dataset, params)
 % 7/20/2015 - v1 - creation
 %.............
 
-  annotFile = fullfile(params.homeDirectory, params.runDir, 'Output', ...
-    sprintf('%s-annot-initial-%s', dataset.snapName, params.feature));
+  fname = fullfile(params.homeDirectory, params.runDir, 'Output', ...
+    sprintf('%s-annot-initial-%s.txt', dataset.snapName, params.feature));
   try
     fileExist = dir(fname);
     if fileExist.bytes > 0
@@ -114,7 +114,7 @@ function f_addAnnotations(dataset, params)
   eventTimesUsec = times;
 
   % remove existing annotation layer
-  layerName = sprintf('%s-%s',params.label,params.technique);
+  layerName = sprintf('initial-%s',params.feature);
   try 
     fprintf('\nRemoving existing layer\n');
     dataset.removeAnnLayer(layerName);
@@ -130,7 +130,7 @@ function f_addAnnotations(dataset, params)
 
   % create annotations one channel at a time
   for i = 1:numel(eventChannels)
-    ann{i} = IEEGAnnotation.createAnnotations(eventTimesUsec(i,1), eventTimesUsec(i,2), 'Event', params.label, dataset.channels(eventChannels{i}));
+    ann{i} = IEEGAnnotation.createAnnotations(eventTimesUsec(i,1), eventTimesUsec(i,2), 'Event', 'Initial', dataset.channels(eventChannels{i}));
 %     ann = [ann IEEGAnnotation.createAnnotations(eventTimesUsec(i,1), eventTimesUsec(i,2), 'Event', params.label, dataset.channels(i))];
 %     tmpChan = uniqueAnnotChannels(i);
 %     ann = [ann IEEGAnnotation.createAnnotations(eventTimesUsec(eventChannels==tmpChan,1), eventTimesUsec(eventChannels==tmpChan,2),'Event', params.label,dataset.channels(tmpChan))];

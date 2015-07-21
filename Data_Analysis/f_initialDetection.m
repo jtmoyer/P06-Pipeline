@@ -199,6 +199,6 @@ function f_initialDetection(dataset, params, dataRow)
   
   % read annotations from file and upload to the portal
   if params.addAnnotations
-    f_addAnnotations(session.data(r), params, runDir); 
+    f_addAnnotations(dataset, params); 
   end;
 end

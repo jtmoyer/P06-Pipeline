@@ -40,18 +40,18 @@ close all force; clc; tic;
 % frequently used parameters are loaded in f_setEnvironment().
 params.homeDirectory = 'C:\Users\jtmoyer\Documents\MATLAB\';
 params.study = 'jensen';       % string indicating which dataset to analyze, ie 'jensen'
-params.runThese = [23];        % which datasets to run, use indices in dataKey.index 
+params.runThese = [2];        % which datasets to run, use indices in dataKey.index 
 params.channels = 1:4;         % which channels to analyze
 
 params.initialDetection = 1;     % run initial event detection? 0/1
 params.feature = 'linelength';   % feature to use for initial event detection
-params.startTime = '1:00:00:00'; % day:hour:minute:second, in portal time
-params.endTime = '1:01:00:00';   % day:hour:minute:second, in portal time
-params.minThresh = 2e2;       % minimum threshold for initial event detection
-params.minDur = 10;           % sec; minimum duration for detections
+params.startTime = '1:11:14:00'; % day:hour:minute:second, in portal time
+params.endTime = '1:12:00:00';   % day:hour:minute:second, in portal time
+params.minThresh = 3e2;       % minimum threshold for initial event detection
+params.minDur = 5;           % sec; minimum duration for detections
 params.viewInitialDetectionPlot = 0; % view plot of feature overlaid on signal, 0/1
 
-params.scoreDetections = 1;   % create and hand-score a test dataset, requires initial event detections
+params.scoreDetections = 0;   % create and hand-score a test dataset, requires initial event detections
 params.numDetections = 200;   % number of detections tp generate for test dataset
 params.inputLayer = 'seizure-linelength';
 params.testPrefix = 'testing';   % prefix for testing data layer
@@ -65,7 +65,7 @@ params.calculatePerformance = 0; % test algorithm performance against test set
 
 params.runStatistics = 0;     % create box plot and run permutation and ranksum test
 
-params.addAnnotations = 0;    % add annotations to portal or not?  0-no, 1-yes
+params.addAnnotations = 1;    % add annotations to portal or not?  0-no, 1-yes
 
 
 %% Load investigator specific information
@@ -79,7 +79,7 @@ params.addAnnotations = 0;    % add annotations to portal or not?  0-no, 1-yes
 % First, load session if it doesn't exist.
 if ~exist('session','var')  % load session if it does not exist
   session = IEEGSession(dataKey.portalId{params.runThese(1)},'jtmoyer','jtm_ieeglogin.bin');
-  for r = 2:length(runThese)
+  for r = 2:length(params.runThese)
     session.openDataSet(dataKey.portalId{params.runThese(r)});
   end
 else    % clear and throw exception if session doesn't have the right datasets
@@ -125,7 +125,7 @@ end
 % end
   
 %% clustering
-if unsupervisedClustering
+if params.artifactRemoval
 %   if ~exist('allData', 'var') 
 %     allData = struct('index', 'channels', cell(length(runThese),1), 'timesUsec', cell(length(runThese),1), 'features', cell(length(runThese),1), 'labels', cell(length(runThese),1));
 %     for r = 1:length(runThese)
@@ -158,7 +158,7 @@ end
 
 
 %% Score detections
-if scoreDetections
+if params.scoreDetections
 %   f_boxPlot(session, params.runThese, dataKey, sprintf('%s-%s',params.label, params.technique)); % 'SVMSeizure-2');
   if ~exist('allData', 'var') 
     load('C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data\Output\allData.mat');
@@ -194,7 +194,7 @@ if scoreDetections
   end
 end
 
-if calculatePerformance
+if params.calculatePerformance
   scores = f_calculatePerformance(session, params.runThese, 'seizure-linelength-just3', 'testing')
   sensitivity = scores.truePositive / (scores.truePositive + scores.falseNegative)
   specificity = scores.trueNegative / (scores.falsePositive + scores.trueNegative)
@@ -203,15 +203,15 @@ if calculatePerformance
 end
 
 %% Analyze results
-if boxPlot
-  perDay = 0;  % per day = 1 means break data into days; per day = 0 means plot per rat
-  inputLayer = 'seizure-linelength';
-  f_boxPlot(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
-  fprintf('Box plot: %s-%s\n', params.label, params.technique);
-  toc
-end
-
-if runStatistics
+% if params.boxPlot
+%   perDay = 0;  % per day = 1 means break data into days; per day = 0 means plot per rat
+%   inputLayer = 'seizure-linelength';
+%   f_boxPlot(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
+%   fprintf('Box plot: %s-%s\n', params.label, params.technique);
+%   toc
+% end
+% 
+if params.runStatistics
   perDay = 1;  % per day = 1 means break data into days; per day = 0 means plot per rat
   inputLayer = 'seizure-linelength';
   pValues = f_statistics(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
