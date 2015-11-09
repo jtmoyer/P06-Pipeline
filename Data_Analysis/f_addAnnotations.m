@@ -23,7 +23,7 @@ function f_addAnnotations(dataset, params)
 % 7/20/2015 - v1 - creation
 %.............
 
-  fname = fullfile(params.homeDirectory, params.runDir, 'Output', ...
+  fname = fullfile(params.runDir, 'Output', ...
     sprintf('%s-annot-initial-%s.txt', dataset.snapName, params.feature));
   try
     fileExist = dir(fname);
@@ -114,19 +114,19 @@ function f_addAnnotations(dataset, params)
   eventTimesUsec = times;
 
   % remove existing annotation layer
-  layerName = sprintf('initial-%s',params.feature);
+  layerName = params.initialOutputLayer;
   try 
-    fprintf('\nRemoving existing layer\n');
+    fprintf('\n%s: Removing existing layer\n', dataset.snapName);
     dataset.removeAnnLayer(layerName);
   catch 
-    fprintf('No existing layer\n');
+    fprintf('%s: No existing layer\n', dataset.snapName);
   end
   
   % create new layer, figure out how many unique channels there are
   annLayer = dataset.addAnnLayer(layerName);
 %   uniqueAnnotChannels = unique([eventChannels{:}]);
   ann = cell(length(eventChannels),1);
-  fprintf('Creating annotations...\n');
+%   fprintf('Creating annotations...\n');
 
   % create annotations one channel at a time
   for i = 1:numel(eventChannels)
@@ -135,16 +135,16 @@ function f_addAnnotations(dataset, params)
 %     tmpChan = uniqueAnnotChannels(i);
 %     ann = [ann IEEGAnnotation.createAnnotations(eventTimesUsec(eventChannels==tmpChan,1), eventTimesUsec(eventChannels==tmpChan,2),'Event', params.label,dataset.channels(tmpChan))];
   end
-  fprintf('done!\n');
+%   fprintf('done!\n');
 
   % upload annotations 5000 at a time (freezes if adding too many)
   numAnnot = numel(ann);
   startIdx = 1;
-  fprintf('Adding annotations...\n');
+%   fprintf('Adding annotations...\n');
   for i = 1:ceil(numAnnot/5000)
-    fprintf('Adding %d to %d\n',startIdx,min(startIdx+5000,numAnnot));
+    fprintf('%s: Adding %d to %d\n', dataset.snapName, startIdx, min(startIdx+5000,numAnnot));
     annLayer.add([ann{startIdx:min(startIdx+5000,numAnnot)}]);
     startIdx = startIdx+5000;
   end
-  fprintf('done!\n');
+%   fprintf('done!\n');
 end

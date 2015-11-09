@@ -14,8 +14,8 @@
 % 'portalTime 02-Jan-2015 08:44:10 = actualTime 10-May-2008 22:03:16'
 
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
-portalId = 'I023_A0019_D001';
-convertFromPortalToActual = '01:00:50:37';  % 'dd:HH:MM:SS'; 01:00:00:00 = start time of portal
+portalId = 'I023_A0003_D009';
+convertFromPortalToActual = '13:08:49:32';  % 'dd:HH:MM:SS'; 01:00:00:00 = start time of portal
 convertFromActualToPortal = '4/26/2014 14:54:22';  % mm/dd/yyyy HH:MM:SS PM
 
 %%.......
@@ -29,7 +29,7 @@ switch study
     runDir = 'C:\Users\jtmoyer\Documents\MATLAB\P04-Jensen-data';
 end
 addpath(genpath(runDir));
-fh = str2func(['f_' study '_data_key']);
+fh = str2func(['f_' study '_dataKey']);
 dataKey = fh();
 
 idx = find(strcmp(dataKey.portalId, portalId));

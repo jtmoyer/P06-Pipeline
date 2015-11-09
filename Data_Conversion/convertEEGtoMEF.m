@@ -12,7 +12,7 @@ addpath('C:\Users\jtmoyer\Documents\MATLAB\');
 javaaddpath('C:\Users\jtmoyer\Documents\MATLAB\java_MEF_writer\MEF_writer.jar');
 addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\ieeg-matlab-1.8.3'));
 
-% define constants for simulation
+% define constants for conversion
 study = 'jensen';  % 'dichter'; 'jensen'; 'pitkanen'
 runThese = [19:34]; % see dataKey indices
 dataBlockLenHr = 0.1; % hours; size of data block to pull from .eeg file

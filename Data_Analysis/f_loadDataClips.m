@@ -1,18 +1,37 @@
-function [channels, clips, timesUsec, labels] = f_loadDataClips(dataset, params, runDir)
-% Usage: f_feature_energy(dataset, params)
-% Input: 
-%   'dataset'   -   [IEEGDataset]: IEEG Dataset, eg session.data(1)
-%   'params'    -   Structure containing parameters for the analysis
-% 
-%   dbstop in f_loadDataClips at 18
-    
+function [channels, timesUsec, labels] = f_createAllData(session, params)
+  %	Usage: outData = f_loadDataClips(dataset, params);
+  % Called by analyzeDataOnPortal.m
+  %	
+  % f_loadDataClips() 
+  %
+  %
+  % Input:
+  %   params    - a structure containing at least the following:
+  %     params.runThese - a list of the indices to be used for the analysis
+  %   dataKey   -  a table with subject index, portal ID, and other info
+  %   session   - IEEG Session variable.  If session is empty,
+  %     f_openPortalSessions creates a new session.  If the datasets in
+  %     session do not match those in runThese, a new session is created.
+  %
+  % Output:
+  %   session   - IEEG session variable with all datasets in it
+  %
+  % Jason Moyer 7/20/2015 
+  % University of Pennsylvania Center for Neuroengineering and Therapeutics
+  %
+  % History:
+  % 7/20/2015 - v1 - creation
+  %.............
+
   % download data from portal or load from file
   channels = [];
-  clips = [];
   timesUsec = [];
   labels = [];
+  clips = [];
+
   params.startUsecs = 0;
   fs = dataset.sampleRate;
+  
   clipsFile =  fullfile(runDir, sprintf('/Output/%s-clips-%s-%s.mat',dataset.snapName,params.label,params.technique));
   if ~exist(clipsFile, 'file')
     layerName = sprintf('%s-%s', params.label, params.technique);
@@ -44,6 +63,7 @@ function [channels, clips, timesUsec, labels] = f_loadDataClips(dataset, params,
       end
       clips = clips(~cellfun('isempty', clips)); 
       save(clipsFile, 'clips', 'timesUsec', 'channels', 'labels', '-v7.3');
+      save(fullfile(params.runDir, 'Output', [params.initialOutputLayer '-allData.mat']), 'allData');
     catch
       fprintf('%s: layer %s does not exist.\n', dataset.snapName, layerName);
       channels = [];

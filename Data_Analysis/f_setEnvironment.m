@@ -32,34 +32,41 @@ function [dataKey, params, featFn] = f_setEnvironment(params)
 
   addpath(params.homeDirectory);
   cd(params.homeDirectory);
-  addpath(genpath('.\ieeg-matlab-1.8.3'));
+%   addpath(genpath('.\ieeg-matlab-1.8.3'));
 
   switch params.study
     case 'dichter'
       params.dataDir = 'Z:\public\DATA\Animal_Data\DichterMAD';  % where original data is stored
-      params.runDir = '.\P05-Dichter-data';  % investigator specific directory, for .xls, .doc files etc.
+      params.runDir = fullfile(params.homeDirectory, 'P05-Dichter-data');  % investigator specific directory, for .xls, .doc files etc.
     case 'jensen'
       params.dataDir = 'Z:\public\DATA\Animal_Data\Frances_Jensen';  
-      params.runDir = '.\P04-Jensen-data';
+      params.runDir = fullfile(params.homeDirectory, 'P04-Jensen-data');
     case 'chahine'
       params.dataDir = 'Z:\public\DATA\Human_Data\SleepStudies';   
-      params.runDir = '.\P03-Chahine-data';
+      params.runDir = fullfile(params.homeDirectory, 'P03-Chahine-data');
     case 'bumetanide'
       params.dataDir = 'Z:\public\DATA\Animal_Data\Frances_Jensen\Frances_Bumetanide';  
-      params.runDir = '.\bumetanide';
+      params.runDir = fullfile(params.homeDirectory, 'bumetanide');
   end
   
-  addpath(genpath(params.runDir));
+  addpath(params.runDir);
 
   fh = str2func(['f_' params.study '_dataKey']);
   dataKey = fh();
 
   fh = str2func(['f_' params.study '_params']);
-  params = fh(params)
+  params = fh(params);
   
   fh = str2func(['f_' params.study '_defineFeatures']);
   featFn = fh();
   
+  addpath(genpath(fullfile(params.homeDirectory, params.toolboxDirectory)));
+
   cd('.\P06-Pipeline\Data_Analysis');
+  
+  diary(fullfile(params.runDir, 'Output', sprintf('diary_%s.txt', datestr(now, 'yyyy-mm-dd-HH-MM-AM'))));
+  diary on
+  params
+  featFn
 end
 

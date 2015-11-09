@@ -55,14 +55,20 @@ function f_initialDetection(dataset, params, dataRow)
   params.startUsecs = ((timeValue(1)-1)*24*60*60 + timeValue(2)*60*60 + ...
     timeValue(3)*60 + timeValue(4))*1e6; 
   if params.startUsecs <= 0  % day = 0 or 1:00:00:00
-    params.startUsecs = round((datenum(dataRow.startEEG, 'dd-mmm-yyyy HH:MM:SS') - datenum(dataRow.startSystem, 'dd-mmm-yyyy HH:MM:SS'))*24*60*60*1e6);
+    params.startUsecs = round((datenum(dataRow.startEEG, 'dd-mmm-yyyy HH:MM:SS') ...
+      - datenum(dataRow.startSystem, 'dd-mmm-yyyy HH:MM:SS'))*24*60*60*1e6);
   end
   timeValue = sscanf(params.endTime,'%d:');
   params.endUsecs = ((timeValue(1)-1)*24*60*60 + timeValue(2)*60*60 + ...
     timeValue(3)*60 + timeValue(4))*1e6; 
   % save time by only analyzing data that is relevant
-  if params.endUsecs <= 0 || params.endUsecs > dataset.channels(1).get_tsdetails().getDuration
-    params.endUsecs = round((datenum(dataRow.endEEG, 'dd-mmm-yyyy HH:MM:SS') - datenum(dataRow.startSystem, 'dd-mmm-yyyy HH:MM:SS'))*24*60*60*1e6);
+%   dataset.snapName
+%   dataset.channels(1).label
+%   dataset.channels(1).get_tsdetails()
+%   dataset.channels(1).get_tsdetails().getDuration
+  if params.endUsecs <= 0 || params.endUsecs > dataset.channels(1).get_tsdetails().getDuration % datenum(dataRow.endEEG)*24*60*60*1e6 
+    params.endUsecs = round((datenum(dataRow.endEEG, 'dd-mmm-yyyy HH:MM:SS') ...
+      - datenum(dataRow.startSystem, 'dd-mmm-yyyy HH:MM:SS'))*24*60*60*1e6);
   end
   
   % calculate number of blocks = # of times to pull data from portal
@@ -73,7 +79,7 @@ function f_initialDetection(dataset, params, dataRow)
   blockSize = params.blockDurMinutes * 60 * 1e6;        % size of block in usecs
 
   % save annotations out to a file so addAnnotations can upload them all at once
-  annotFile = fullfile(params.homeDirectory, params.runDir, 'Output', ...
+  annotFile = fullfile(params.runDir, 'Output', ...
     sprintf('%s-annot-initial-%s', dataset.snapName, params.feature));
   ftxt = fopen([annotFile '.txt'],'w');
   assert(ftxt > 0, 'Unable to open text file for writing: %s\n', [annotFile '.txt']);
@@ -100,7 +106,10 @@ function f_initialDetection(dataset, params, dataRow)
       error('Unable to get data.');
     end
     
-    fprintf('%s: Processing data block %d of %d\n', dataset.snapName, b, numBlocks);
+    % print out progress indicator every 50 blocks
+    if mod(b, 50) == 1
+      fprintf('%s: Processing data block %d of %d\n', dataset.snapName, b, numBlocks);
+    end
 
     %%-----------------------------------------
     %%---  feature creation and data processing
@@ -140,8 +149,8 @@ function f_initialDetection(dataset, params, dataRow)
         end
         
         p = p + 1;
-        pause;      % pause to view plot
-%        keyboard    % type return in command window to keep going, dbquit to stop
+%         pause;      % pause to view plot
+       keyboard    % type return in command window to keep going, dbquit to stop
         clf;        % can change keyboard to pause to move more quickly
       end
     end
@@ -195,10 +204,23 @@ function f_initialDetection(dataset, params, dataRow)
       end
     end
   end
-  fprintf('%d leftover segments.\n', leftovers);
+%   fprintf('%d leftover segments.\n', leftovers);
   
   % read annotations from file and upload to the portal
   if params.addAnnotations
-    f_addAnnotations(dataset, params); 
+    count = 0;
+    successful = 0;
+    while count < 10 && ~successful
+      try
+        f_addAnnotations(dataset, params); 
+        successful = 1;
+      catch
+        count = count + 1;
+        fprintf('Upload try #: %d\n', count);
+      end
+    end
+    if ~successful
+      error('Unable to upload data.');
+    end
   end;
 end
