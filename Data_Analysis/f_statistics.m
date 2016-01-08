@@ -46,11 +46,11 @@ function pValues = f_statistics(session, runDir, runThese, dataKey, layerName, i
         % drop the last bin (zero)
         eventsPerDay{r}(end) = [];
       else
-        eventsPerDay{r} = length(timesUsec(:,1));
+        eventsPerDay{r} = length(timesUsec(:,1)) / lengthInDays(r);
       end
     end
   end
-    
+  
 %   % create column vectors of data
 %   eventsPerDayCol = [];
 %   groupsPerDayCol = [];
@@ -58,51 +58,60 @@ function pValues = f_statistics(session, runDir, runThese, dataKey, layerName, i
 %     eventsPerDayCol = [eventsPerDayCol; eventsPerDay{r}(:)];
 %     groupsPerDayCol = [groupsPerDayCol; repmat(groupName(r), size(eventsPerDay{r}(:)))];
 %   end
+
+  % perform permutation test
   uniqueGroups = unique(groupName(~cellfun(@isempty, groupName)));
   groupCombos = nchoosek(1:length(uniqueGroups),2);
-  
-  pValues = cell(size(groupCombos,1), 3);
-  for g = 1: size(groupCombos,1)
-    firstGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,1))));
-    secondGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,2))));
-    groupsCombined = [firstGroup; secondGroup];
-    permutations = nchoosek(1:length(groupsCombined),length(firstGroup));
-    
-%     idx1 = strcmp(g, uniqueGroups(groupCombos(g,1)));
-%     idx2 = strcmp(groupsPerDayCol, uniqueGroups(groupCombos(g,2)));
-%     groupData = [[eventsPerDayCol(idx1) repmat(groupCombos(g,1), sum(idx1), 1)]; ...
-%       [eventsPerDayCol(idx2) repmat(groupCombos(g,2), sum(idx2), 1)]];
-%     [~, ~, ~, tSTATS] = ttest2(groupData(groupData(:,2) == groupCombos(g,1)), groupData(groupData(:,2) == groupCombos(g,2)));
-%     tValues(1) = tSTATS.tstat;  % tValues(1) is the t-value for the real data
-%     permutations = randi(2, [length(groupData) numTrials]);
-    
-    tValues = nan(size(permutations,1),1);
-    for n = 1: size(permutations,1)
-      groupA = vertcat(groupsCombined{ismember(1:length(groupsCombined),permutations(n,:))});
-      groupB = vertcat(groupsCombined{~ismember(1:length(groupsCombined),permutations(n,:))});
-%       [~, ~, ~, tSTATS] = ttest2(groupA, groupB);
-%       tValues(n) = tSTATS.tstat;  % tValues(1) is t value of actual data
-      [~, ~, rSTATS] = ranksum(groupA, groupB);
-      tValues(n) = rSTATS.ranksum;  % tValues(1) is t value of actual data
+  if perDay
+    pValues = cell(size(groupCombos,1), 3);
+    for g = 1: size(groupCombos,1)
+      firstGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,1))));
+      secondGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,2))));
+      groupsCombined = [firstGroup; secondGroup];
+      permutations = nchoosek(1:length(groupsCombined),length(firstGroup));
+
+  %     idx1 = strcmp(g, uniqueGroups(groupCombos(g,1)));
+  %     idx2 = strcmp(groupsPerDayCol, uniqueGroups(groupCombos(g,2)));
+  %     groupData = [[eventsPerDayCol(idx1) repmat(groupCombos(g,1), sum(idx1), 1)]; ...
+  %       [eventsPerDayCol(idx2) repmat(groupCombos(g,2), sum(idx2), 1)]];
+  %     [~, ~, ~, tSTATS] = ttest2(groupData(groupData(:,2) == groupCombos(g,1)), groupData(groupData(:,2) == groupCombos(g,2)));
+  %     tValues(1) = tSTATS.tstat;  % tValues(1) is the t-value for the real data
+  %     permutations = randi(2, [length(groupData) numTrials]);
+
+      tValues = nan(size(permutations,1),1);
+      for n = 1: size(permutations,1)
+        groupA = vertcat(groupsCombined{ismember(1:length(groupsCombined),permutations(n,:))});
+        groupB = vertcat(groupsCombined{~ismember(1:length(groupsCombined),permutations(n,:))});
+  %       [~, ~, ~, tSTATS] = ttest2(groupA, groupB);
+  %       tValues(n) = tSTATS.tstat;  % tValues(1) is t value of actual data
+        [~, ~, rSTATS] = ranksum(groupA, groupB);
+        tValues(n) = rSTATS.ranksum;  % tValues(1) is t value of actual data
+      end
+
+      pValues{g,1} = uniqueGroups{groupCombos(g,1)};
+      pValues{g,2} = uniqueGroups{groupCombos(g,2)};
+      if tValues(1) < mean(tValues)
+        pValues{g,3} = sum(tValues < tValues(1)) / length(tValues);
+      else 
+        pValues{g,3} = sum(tValues > tValues(1)) / length(tValues);
+      end
+
+      [counts, centers] = hist(tValues(2:end),10);
+      h = figure(1);
+      bar(centers,counts);
+      line([tValues(1) tValues(1)], [0 max(counts)], 'Color', 'r');
+      ylabel('Count');
+      xlabel('tValues');
+      title([uniqueGroups{groupCombos(g,1)} ' vs ' uniqueGroups{groupCombos(g,2)}]);
+      legend('Shuffled', 'Actual', 'Location', 'NorthWest');
+      print(h, fullfile(runDir, 'output', 'Figures', [uniqueGroups{groupCombos(g,1)} '_' uniqueGroups{groupCombos(g,2)} '_pvalue.png']), '-dpng');
     end
-    
-    pValues{g,1} = uniqueGroups{groupCombos(g,1)};
-    pValues{g,2} = uniqueGroups{groupCombos(g,2)};
-    if tValues(1) < mean(tValues)
-      pValues{g,3} = sum(tValues < tValues(1)) / length(tValues);
-    else 
-      pValues{g,3} = sum(tValues > tValues(1)) / length(tValues);
+  else
+    for g = 1: size(groupCombos,1)
+      firstGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,1))));
+      secondGroup = eventsPerDay(strcmp(groupName, uniqueGroups(groupCombos(g,2))));
+      pValues = ranksum([firstGroup{:}], [secondGroup{:}], 'tail', 'both');
     end
-    
-    [counts, centers] = hist(tValues(2:end),10);
-    h = figure(1);
-    bar(centers,counts);
-    line([tValues(1) tValues(1)], [0 max(counts)], 'Color', 'r');
-    ylabel('Count');
-    xlabel('tValues');
-    title([uniqueGroups{groupCombos(g,1)} ' vs ' uniqueGroups{groupCombos(g,2)}]);
-    legend('Shuffled', 'Actual', 'Location', 'NorthWest');
-    print(h, fullfile(runDir, 'output', 'Figures', [uniqueGroups{groupCombos(g,1)} '_' uniqueGroups{groupCombos(g,2)} '_pvalue.png']), '-dpng');
   end
   
   % create box plot
@@ -176,7 +185,7 @@ function pValues = f_statistics(session, runDir, runThese, dataKey, layerName, i
     end
   end
   
-  legend(h2, uniqueGroups{1:4});  
+%   legend(h2, uniqueGroups{1:4});  
   title(layerName);
   ylim([0 400]);
   

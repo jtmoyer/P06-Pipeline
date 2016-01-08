@@ -15,7 +15,7 @@ addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\NeuralynxMatlabImportExport_v
 
 % define constants for conversion
 study = 'wolf';  % 'dichter'; 'jensen'; 'pitkanen'
-runThese = [1:2]; % see dataKey indices
+runThese = [2:8]; % see dataKey indices
 dataBlockLenHr = 0.1; % hours; size of data block to pull from .eeg file
 mefGapThresh = 1000; % msec; min size of gap in data to be called a gap
 mefBlockSize = 0.1; % sec; size of block for mefwriter to write
@@ -38,7 +38,7 @@ switch study
   case 'pitkanen'
     addpath(genpath('C:\Users\jtmoyer\Documents\MATLAB\P01-Pitkanen-data')); 
   case 'wolf'
-    rootDir = 'Z:\public\DATA\Animal_Data\John_Wolf';
+    rootDir = 'Z:\public\DATA\Animal_Data\John_Wolf\Baseline_HC';
     runDir = 'C:\Users\jtmoyer\Documents\MATLAB\P07-Wolf-data';
 end
 addpath(genpath(runDir));
@@ -49,8 +49,7 @@ dataKey = fh();
 %% convert data from NCS to mef
 if convert
   for r = 1: length(runThese)
-    animalDir = fullfile(rootDir,char(dataKey.animalId(runThese(r))), ...
-      char(dataKey.treatmentGroup(runThese(r))));
+    animalDir = fullfile(rootDir,char(dataKey.animalId(runThese(r))));
     f_ncs2mef(animalDir, mefGapThresh, mefBlockSize);
   end
 end

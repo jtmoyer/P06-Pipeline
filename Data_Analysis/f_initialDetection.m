@@ -66,7 +66,7 @@ function f_initialDetection(dataset, params, dataRow)
 %   dataset.channels(1).label
 %   dataset.channels(1).get_tsdetails()
 %   dataset.channels(1).get_tsdetails().getDuration
-  if params.endUsecs <= 0 || params.endUsecs > dataset.channels(1).get_tsdetails().getDuration % datenum(dataRow.endEEG)*24*60*60*1e6 
+  if params.endUsecs <= 0 || params.endUsecs > dataset.rawChannels(1).get_tsdetails().getDuration % datenum(dataRow.endEEG)*24*60*60*1e6 
     params.endUsecs = round((datenum(dataRow.endEEG, 'dd-mmm-yyyy HH:MM:SS') ...
       - datenum(dataRow.startSystem, 'dd-mmm-yyyy HH:MM:SS'))*24*60*60*1e6);
   end

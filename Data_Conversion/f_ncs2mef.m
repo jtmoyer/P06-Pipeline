@@ -27,8 +27,7 @@ function [] = f_ncs2mef(animalDir, gapThresh, mefBlockSize)
     dateOffset = datenum('1/1/1970 0:00:00',dateFormat);  % portal time
     
     % get list of data files in the animal directory
-    % remove files that do not match the r###_### naming convention
-    % remove .bni, .mat, .txt, .rev files
+    % remove files that do not match the .ncs naming convention
     NCSList = dir(fullfile(animalDir,'*'));
     removeThese = false(length(NCSList),1);
     for f = 1:length(NCSList)
@@ -117,7 +116,15 @@ function [] = f_ncs2mef(animalDir, gapThresh, mefBlockSize)
         h.setChannelName(num2str(ChannelNumbers(1)+1,'%02u'));
         h.setHighFrequencyFilterSetting(str2double(highFreqFilter{end}));
         h.setLowFrequencyFilterSetting(str2double(lowFreqFilter{end}));
-        h.writeData(dataVec, timeVec, length(dataVec));
+        
+        % declare blockSize in Mb; XX Mb * 8e6 bits/MB * 1 sample/16 bits 
+        blockSize = 10 * 8e6 / 16; % blockSize in samples
+        numBlocks = ceil(length(dataVec)/blockSize);
+        for b = 1: numBlocks
+          curPt = 1+(b-1)*blockSize;
+          endPt = min([b*blockSize length(dataVec)]);
+          h.writeData(dataVec(curPt:endPt), timeVec(curPt:endPt), endPt-curPt+1);
+        end
 
       % in case of error be sure to close mef before throwing exception
       catch err

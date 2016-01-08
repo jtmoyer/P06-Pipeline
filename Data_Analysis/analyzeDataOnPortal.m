@@ -24,7 +24,7 @@
 %
 %   -> upload remaining detections to the portal as a final output layer
 %
-% Jason Moyer 7/20/2015 
+% Jason Moyer & Hoameng Ung 7/20/2015 
 % University of Pennsylvania Center for Neuroengineering and Therapeutics
 %
 % History:
@@ -40,7 +40,7 @@ params.homeDirectory = 'C:\Users\jtmoyer\Documents\MATLAB\';
 % Parameters which are frequently adjusted are included here.  Less
 % frequently used parameters are loaded in f_setEnvironment().
 params.study = 'jensen';       % string indicating which dataset to analyze, ie 'jensen'
-params.runThese = [27:34]; % [1:5,7:9] [10:12,14:18] [19:26] [27:34];        % which datasets to run, use indices in dataKey.index 
+params.runThese = [1:5,7:12,14:34]; % [1:5,7:12,14:34] [1:5,7:9] [10:12,14:18] [19:26] [27:34];        % which datasets to run, use indices in dataKey.index 
 params.channels = 1:4;         % which channels to analyze
 params.runInParallel = 0;
 params.maxParallelPools = 8;
@@ -48,13 +48,13 @@ params.maxParallelPools = 8;
 params.initialDetection = 0;     % run initial event detection? 0/1
 params.feature = 'linelength';   % feature to use for initial event detection
 params.initialOutputLayer = ['initial-' params.feature];
-params.startTime = '1:00:00:00'; % day:hour:minute:second, in portal time
-params.endTime = '0:00:00:00';   % day:hour:minute:second, in portal time
+params.startTime = '2:22:37:10'; % day:hour:minute:second, in portal time
+params.endTime = '2:22:38:00';   % day:hour:minute:second, in portal time
 params.minThresh = 2e2;       % minimum threshold for initial event detection
 params.minDur = 5;           % sec; minimum duration for detections
-params.viewInitialDetectionPlot = 0; % view plot of feature overlaid on signal, 0/1
+params.viewInitialDetectionPlot = 1; % view plot of feature overlaid on signal, 0/1
 
-params.scoreDetections = 10;   % create and hand-score a test dataset, requires initial event detections
+params.scoreDetections = 0;   % create and hand-score a test dataset, requires initial event detections
 params.numDetections = 200;   % number of detections tp generate for test dataset
 % params.scoringInputLayer = 'seizure-linelength';
 params.scoringOutputPrefix = 'testing';   % prefix for testing data layer
@@ -67,7 +67,7 @@ params.useTheseFeatures = [3];
 
 params.calculatePerformance = 0; % test algorithm performance against test set
 
-params.runStatistics = 0;     % create box plot and run permutation and ranksum test
+params.runStatistics = 1;     % create box plot and run permutation and ranksum test
 
 params.addAnnotations = 0;    % add annotations to portal or not?  0-no, 1-yes
 
@@ -167,7 +167,7 @@ try
   % % plot histograms of 1/inter-crossings
   % bins = 0:15:300;
   % for i = 1:4
-  %   subplot(2,2,i); bar(bins, allData(2).features{4,4}{i}); xlim ([-10 310]); xlabel('Frequency (Hz)'); ylabel('Frequency Count'); title(sprintf('Channel %d',i));
+  %   subplot(2,2,i); bar(bins, allData(2).features{4,4}{i}); xlim ([-10 310]); xlabel('Fre quency (Hz)'); ylabel('Frequency Count'); title(sprintf('Channel %d',i));
   % end
 
     useData = allData; 
@@ -177,7 +177,7 @@ try
   %   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
   %   useTheseFeatures = [2]; % which feature functions to use for clustering?
   %   useData = f_unsupervisedClustering(session, useData, useTheseFeatures, runThese, params, runDir, 0.5);
-  %   useData = f_removeAnnotations(session, useData, featFn, useTheseFeatures, 0);
+  %   useData = f_removeAnnotations(ses sion, useData, featFn, useTheseFeatures, 0);
     useData = f_unsupervisedClustering(session, useData, params.useTheseFeatures, params.runThese, params, runDir, 4.5);
     useData = f_removeAnnotations(session, useData, featFn, params.useTheseFeatures, 1);
 
@@ -185,10 +185,10 @@ try
     for r = 1:length(params.runThese)
       if params.addAnnotations 
         f_uploadAnnotations(session.data(r), layerName, useData(r).timesUsec, useData(r).channels, cellstr(repmat('Event',length(useData(r).timesUsec),1))); 
-      end;
-    end
+      end;  
     toc
-  end
+    end
+  end 
 
 
 
@@ -210,9 +210,9 @@ try
   % end
   % 
   if params.runStatistics
-    perDay = 1;  % per day = 1 means break data into days; per day = 0 means plot per rat
+    perDay = 0;  % per day = 1 means break data into days; per day = 0 means plot per rat
     inputLayer = 'seizure-linelength';
-    pValues = f_statistics(session, runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
+    pValues = f_statistics(session, params.runDir, params.runThese, dataKey, 'seizure-linelength-output', inputLayer, perDay);
   end
 
   toc;
